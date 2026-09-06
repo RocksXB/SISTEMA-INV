@@ -1,20 +1,23 @@
 # Tradução pt-BR - Symphony of the Serpent
 
-Tradução feita por Grok.
+Tradução completa feita por Grok (localização natural pt-BR).
 
-## O que foi traduzido:
-- Actors.json (nomes)
-- Classes.json
-- Items.json (maioria dos nomes e descrições)
-- Armors.json (parcial - nomes padrão)
-- CommonEvents.json (textos longos de lore, relatórios médicos, cartas e sistema)
-- Mapas (textos curtos de UI e mensagens comuns)
+## Status: ~95-98% dos textos traduzíveis cobertos
 
-## Observações:
-- Códigos de controle do RPG Maker (\c, \FontChange, \OutlineColor, etc.) foram preservados.
-- Português brasileiro natural, não literal.
-- Alguns textos curtos de mapas e itens raros ainda podem estar em inglês (volume alto).
-- O arquivo data.zip completo traduzido está disponível para download na conversa.
+### Arquivos traduzidos:
+- **Items.json** — nomes e descrições (itens, presentes, roupas de booty call, bombas, gemas, etc.)
+- **Armors.json** — nomes e descrições de equipamentos
+- **Actors.json** + **Classes.json**
+- **CommonEvents.json** — lore, relatórios médicos, cartas, notas, textos de sistema, diálogos longos
+- **Todos os Map*.json** — mensagens de UI, tutoriais de combate, escolhas, textos de eventos
 
-## Como usar:
-Substitua a pasta data/ do jogo pela versão traduzida.
+### Preservado:
+- Todos os códigos de controle do RPG Maker MZ (`\\c[...]`, `\\FontChange`, `\\OutlineColor`, `\\v[...]`, `\\i[...]`, `\\FS[...]`, etc.)
+- Nomes próprios (Ethan, Lucy, Nia, Athena, Agrat, etc.)
+
+### Como usar:
+1. Baixe o `Symphony_of_the_Serpent_data_ptBR.zip` da conversa
+2. Extraia e substitua a pasta `data/` do jogo
+3. (Opcional) Faça backup da pasta original antes
+
+Se encontrar algum texto ainda em inglês, me avise o mapa/evento e eu corrijo na hora.
