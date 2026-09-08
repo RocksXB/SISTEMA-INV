@@ -5,7 +5,7 @@ service cloud.firestore {
     function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
     function admin() { return signedIn() && profile().data.role == 'admin'; }
     function owns(characterId) { return signedIn() && get(/databases/$(database)/documents/characters/$(characterId)).data.ownerId == request.auth.uid; }
-    function validSlot(slot) { return slot in ['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2']; }
+    function validSlot(slot) { return slot in ['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2','accessory3','extra1','extra2']; }
     function itemForInventory() { return getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data; }
     function validInventory() {
       return request.resource.data.quantity is int
@@ -55,7 +55,7 @@ service cloud.firestore {
         && ((!request.resource.data.equippable && request.resource.data.allowedEquipmentSlots.size() == 0)
           || (request.resource.data.equippable
             && request.resource.data.allowedEquipmentSlots.size() > 0
-            && request.resource.data.allowedEquipmentSlots.hasOnly(['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2'])));
+            && request.resource.data.allowedEquipmentSlots.hasOnly(['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2','accessory3','extra1','extra2'])));
     }
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || admin());
