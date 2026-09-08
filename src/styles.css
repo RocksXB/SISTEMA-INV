@@ -349,6 +349,14 @@ h2,
   color: #ff9db0;
   font-size: 13px;
 }
+.form-success {
+  padding: 13px;
+  border: 1px solid rgba(113, 245, 188, 0.4);
+  background: rgba(113, 245, 188, 0.08);
+  color: var(--green);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
 .error-state {
   display: flex;
   gap: 10px;
@@ -934,6 +942,192 @@ dd {
 .mobile-nav {
   display: none;
 }
+.request-panel {
+  margin-top: 20px;
+}
+.request-cta {
+  margin: 18px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--cyan);
+  background: rgba(35, 173, 207, 0.12);
+  color: var(--cyan);
+  padding: 12px 18px;
+  font: 600 11px "Chakra Petch";
+  letter-spacing: 0.08em;
+}
+.request-cta svg,
+.review-actions svg,
+.approval-mode svg {
+  width: 17px;
+}
+.request-loading {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font: 500 11px "Chakra Petch";
+  letter-spacing: 0.1em;
+}
+.request-list,
+.request-admin-list {
+  border-top: 1px solid var(--border);
+}
+.request-list article,
+.request-admin-list > button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 0;
+  border-bottom: 1px solid rgba(105, 218, 244, 0.1);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.request-admin-list > button:hover {
+  background: rgba(85, 231, 255, 0.05);
+}
+.request-list article > svg,
+.request-admin-list svg {
+  width: 18px;
+  color: var(--cyan);
+}
+.request-list article > div,
+.request-admin-list button > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.request-list span,
+.request-admin-list span,
+.request-list small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.request-status {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  font-style: normal;
+  font: 600 9px "Chakra Petch";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.request-status.status-pending {
+  color: var(--warning);
+  border-color: rgba(255, 200, 87, 0.45);
+}
+.request-status.status-approved {
+  color: var(--green);
+  border-color: rgba(113, 245, 188, 0.4);
+}
+.request-status.status-rejected {
+  color: var(--danger);
+  border-color: rgba(255, 85, 118, 0.45);
+}
+.request-list .danger-icon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--danger);
+}
+.admin-tabs strong {
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--warning);
+  color: #181000;
+  font-size: 10px;
+}
+.request-meta img {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+  background: #050e17;
+  border: 1px solid var(--border);
+}
+.request-meta dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--border);
+}
+.request-meta dl > div {
+  min-width: 0;
+  padding: 10px;
+  border-right: 1px solid var(--border);
+}
+.request-meta dd {
+  overflow-wrap: anywhere;
+}
+.approval-mode {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.approval-mode button,
+.review-actions button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: #06111b;
+  color: var(--muted);
+  font-size: 10px;
+}
+.approval-mode button.active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+.request-existing,
+.request-note {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.request-existing select,
+.request-note textarea {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  background: #040c14;
+  color: var(--text);
+  padding: 12px;
+}
+.review-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+.reviewed-request {
+  display: grid;
+  gap: 15px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 @media (max-width: 800px) {
   .topbar {
     height: 62px;
@@ -1025,6 +1219,18 @@ dd {
   .data-list article > div:last-child {
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+  .request-list article,
+  .request-admin-list > button {
+    grid-template-columns: auto 1fr auto;
+  }
+  .request-list article > button {
+    grid-column: 3;
+  }
+  .approval-mode,
+  .review-actions,
+  .request-meta dl {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 430px) {

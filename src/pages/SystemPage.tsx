@@ -13,6 +13,7 @@ import { ENCUMBRANCE_CONFIG } from "../config/encumbrance";
 import { ITEM_CATEGORIES } from "../config/itemCategories";
 import { ITEM_RARITIES, rarityConfig } from "../config/itemRarities";
 import { InventoryCard } from "../components/InventoryCard";
+import { PlayerItemRequests } from "../components/PlayerItemRequests";
 import { Modal, Empty, ErrorState, Loading, Panel } from "../components/Ui";
 import {
   SystemNotification,
@@ -284,6 +285,15 @@ export function SystemPage() {
           </Panel>
         </section>
       </div>
+      {profile?.role === "player" && user && characterId && (
+        <PlayerItemRequests
+          characterId={characterId}
+          uid={user.uid}
+          onSuccess={(message) =>
+            setNotice({ title: "SOLICITAÇÃO REGISTRADA", message })
+          }
+        />
+      )}
       {selected && (
         <Modal title="Registro de item" onClose={() => setSelected(null)}>
           <div className="item-detail">

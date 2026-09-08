@@ -47,6 +47,7 @@ Para jogadores use `role: "player"`. Esse bootstrap deve ser feito pelo Console 
 - `characters/{characterId}`: `ownerId` (UID), `name`, campos opcionais, `carryingCapacity`, timestamps;
 - `items/{itemId}`: definição global com categoria, raridade, peso, empilhamento, slots e tags;
 - `characters/{characterId}/inventory/{inventoryItemId}`: referência `itemId`, quantidade, estado/slot de equipamento e timestamps.
+- `itemRequests/{requestId}`: solicitação do player, dados propostos, personagem, status e metadados da revisão do GM.
 
 Peso total, percentual e status são derivados no navegador, nunca persistidos. Itens equipados continuam no peso. O catálogo não é duplicado no inventário. Itens empilháveis usam um documento determinístico com ID igual ao `itemId`; entregas concorrentes usam transação e quantidade zero remove o documento. Ao excluir um personagem, o serviço apaga seu inventário em batches de até 450 operações antes do documento principal. Uma definição global só pode ser excluída quando uma consulta `collectionGroup` confirma que nenhum inventário ainda a referencia.
 
@@ -65,6 +66,16 @@ Alternativamente, cole `firestore.rules` na aba Rules do Firestore. A unicidade 
 ## Operação
 
 O Project ID Firebase usado para publicação é `telaprincipal-23a86`. Após login, `/characters` consulta somente identidades autorizadas (admin vê todas). `/system/:id` apresenta busca, filtros, ordenações, detalhe, equipamento e carga em tempo real. `/admin` fornece CRUD de catálogo/personagens e entrega transacional de itens. Contas player não acessam a rota nem as operações pelas Rules.
+
+### Solicitações de itens
+
+Na HUD do próprio personagem, o player pode preencher **Enviar item para aprovação** e acompanhar nome, quantidade, data e status em **Minhas solicitações**. O `requestedBy` vem sempre da sessão Firebase e o `characterId` da HUD atual; as Rules também confirmam que o personagem pertence ao UID. Somente uma solicitação própria ainda pendente pode ser cancelada.
+
+Em `/admin`, a aba **Solicitações** mostra pendências primeiro e um badge com a quantidade pendente. O GM pode corrigir todos os dados, rejeitar com observação, excluir ou aprovar criando uma nova definição global ou vinculando uma já existente. A aprovação lê novamente o status e realiza catálogo, inventário e revisão na mesma transação, impedindo aprovação dupla. Pilhas usam o ID determinístico do item e respeitam `maxStack`; itens não empilháveis são criados como entradas unitárias. Players nunca escrevem em `/items` nem alteram quantidades de inventário.
+
+O formulário de revisão administrativa é controlado pelo componente pai. Portanto, ao clicar em **Aprovar**, as alterações atualmente visíveis são validadas e gravadas atomicamente junto da aprovação, mesmo que o GM não tenha usado antes **Salvar alterações**.
+
+`npm test` executa os testes unitários e, por meio do Firebase Emulator, os testes reais de `firestore.rules` em `tests/firestore.rules.test.ts`. É necessário ter Java disponível para iniciar o emulador.
 
 Categorias ficam em `src/config/itemCategories.ts`, raridades em `itemRarities.ts`, slots em `equipmentSlots.ts` e faixas de carga em `encumbrance.ts`. Para ampliar, adicione o valor ao tipo correspondente em `src/types/index.ts`, à configuração e à lista equivalente de `firestore.rules` quando aplicável.
 

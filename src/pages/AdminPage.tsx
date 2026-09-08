@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Boxes, Edit3, PackagePlus, Search, Trash2, Users } from "lucide-react";
+import {
+  Boxes,
+  Edit3,
+  MessageSquareText,
+  PackagePlus,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { ITEM_CATEGORIES } from "../config/itemCategories";
 import { EQUIPMENT_SLOTS } from "../config/equipmentSlots";
@@ -18,6 +26,8 @@ import {
   setQuantity,
 } from "../services/inventoryService";
 import { useInventory } from "../hooks/useInventory";
+import { useAllItemRequests } from "../hooks/useItemRequests";
+import { AdminItemRequests } from "../components/AdminItemRequests";
 import type {
   Character,
   EquipmentSlot,
@@ -48,8 +58,9 @@ const blankCharacter: Omit<Character, "id"> = {
 };
 export function AdminPage() {
   const { items, loading, error } = useItems();
+  const requestState = useAllItemRequests();
   const [characters, setCharacters] = useState<Character[]>([]),
-    [tab, setTab] = useState<"items" | "characters">("items"),
+    [tab, setTab] = useState<"items" | "characters" | "requests">("items"),
     [query, setQuery] = useState(""),
     [itemEdit, setItemEdit] = useState<ItemDefinition | true | null>(null),
     [charEdit, setCharEdit] = useState<Character | true | null>(null),
@@ -73,6 +84,9 @@ export function AdminPage() {
         .toLowerCase()
         .includes(query.toLowerCase()),
     );
+  const pendingRequests = requestState.requests.filter(
+    (request) => request.status === "pending",
+  ).length;
   async function removeItem(i: ItemDefinition) {
     if (
       confirm(
@@ -123,26 +137,35 @@ export function AdminPage() {
         >
           <Users /> Personagens
         </button>
+        <button
+          className={tab === "requests" ? "active" : ""}
+          onClick={() => setTab("requests")}
+        >
+          <MessageSquareText /> Solicitações
+          {pendingRequests > 0 && <strong>{pendingRequests}</strong>}
+        </button>
       </div>
       <Panel>
-        <div className="admin-tools">
-          <label className="search">
-            <Search />
-            <input
-              placeholder="Pesquisar registros..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-          <button
-            className="primary"
-            onClick={() =>
-              tab === "items" ? setItemEdit(true) : setCharEdit(true)
-            }
-          >
-            + NOVO REGISTRO
-          </button>
-        </div>
+        {tab !== "requests" && (
+          <div className="admin-tools">
+            <label className="search">
+              <Search />
+              <input
+                placeholder="Pesquisar registros..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <button
+              className="primary"
+              onClick={() =>
+                tab === "items" ? setItemEdit(true) : setCharEdit(true)
+              }
+            >
+              + NOVO REGISTRO
+            </button>
+          </div>
+        )}
         {tab === "items" ? (
           <div className="data-list">
             {!shownItems.length ? (
@@ -175,7 +198,7 @@ export function AdminPage() {
               ))
             )}
           </div>
-        ) : (
+        ) : tab === "characters" ? (
           <div className="data-list">
             {!shownChars.length ? (
               <Empty text="NENHUM PERSONAGEM" />
@@ -220,6 +243,14 @@ export function AdminPage() {
               ))
             )}
           </div>
+        ) : (
+          <AdminItemRequests
+            items={items}
+            characters={characters}
+            requests={requestState.requests}
+            loading={requestState.loading}
+            error={requestState.error}
+          />
         )}
       </Panel>
       {itemEdit && (
