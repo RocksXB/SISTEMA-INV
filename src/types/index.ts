@@ -25,7 +25,10 @@ export type EquipmentSlot =
   | "mainHand"
   | "offHand"
   | "accessory1"
-  | "accessory2";
+  | "accessory2"
+  | "accessory3"
+  | "extra1"
+  | "extra2";
 export type EncumbranceStatus = "normal" | "loaded" | "heavy" | "overloaded";
 export type ItemRequestStatus = "pending" | "approved" | "rejected";
 type DateValue = Timestamp | null;
