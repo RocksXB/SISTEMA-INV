@@ -1,3 +1,57 @@
-import type {ReactNode} from 'react';import {Navigate,Route,Routes} from 'react-router-dom';import {Layout} from './components/Layout';import {Loading} from './components/Ui';import {useAuth} from './features/auth/AuthContext';import {AdminPage} from './pages/AdminPage';import {CharactersPage} from './pages/CharactersPage';import {LoginPage} from './pages/LoginPage';import {SystemPage} from './pages/SystemPage';
-function Private({admin=false,children}:{admin?:boolean;children:ReactNode}){const {user,profile,loading}=useAuth();if(loading)return <Loading label="Verificando credenciais..."/>;if(!user)return <Navigate to="/login" replace/>;if(!profile)return <main className="center-state"><b>ACESSO INCOMPLETO</b><span>Perfil Firestore não localizado. Contate o administrador.</span></main>;if(admin&&profile.role!=='admin')return <Navigate to="/characters" replace/>;return children}
-export default function App(){return <Routes><Route path="/login" element={<LoginPage/>}/><Route element={<Private><Layout/></Private>}><Route index element={<Navigate to="/characters" replace/>}/><Route path="/characters" element={<CharactersPage/>}/><Route path="/system/:characterId" element={<SystemPage/>}/><Route path="/admin" element={<Private admin><AdminPage/></Private>}/></Route><Route path="*" element={<Navigate to="/characters" replace/>}/></Routes>}
+import type { ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { Loading } from "./components/Ui";
+import { useAuth } from "./features/auth/AuthContext";
+import { AdminPage } from "./pages/AdminPage";
+import { CharactersPage } from "./pages/CharactersPage";
+import { LoginPage } from "./pages/LoginPage";
+import { SystemPage } from "./pages/SystemPage";
+function Private({
+  admin = false,
+  children,
+}: {
+  admin?: boolean;
+  children: ReactNode;
+}) {
+  const { user, profile, loading } = useAuth();
+  if (loading) return <Loading label="Verificando credenciais..." />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile)
+    return (
+      <main className="center-state">
+        <b>ACESSO INCOMPLETO</b>
+        <span>Perfil Firestore não localizado. Contate o administrador.</span>
+      </main>
+    );
+  if (admin && profile.role !== "admin")
+    return <Navigate to="/characters" replace />;
+  return children;
+}
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        element={
+          <Private>
+            <Layout />
+          </Private>
+        }
+      >
+        <Route index element={<Navigate to="/characters" replace />} />
+        <Route path="/characters" element={<CharactersPage />} />
+        <Route path="/system/:characterId" element={<SystemPage />} />
+        <Route
+          path="/admin"
+          element={
+            <Private admin>
+              <AdminPage />
+            </Private>
+          }
+        />
+      </Route>
+      <Route path="*" element={<Navigate to="/characters" replace />} />
+    </Routes>
+  );
+}

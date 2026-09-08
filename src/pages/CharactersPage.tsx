@@ -1,2 +1,56 @@
-import { useEffect,useState } from 'react';import {ChevronRight,ScanFace} from 'lucide-react';import {Link} from 'react-router-dom';import {Empty,ErrorState,Loading,Panel} from '../components/Ui';import {useAuth} from '../features/auth/AuthContext';import {getCharacters} from '../services/characterService';import type {Character} from '../types';
-export function CharactersPage(){const {user,profile,error:authError}=useAuth();const [chars,setChars]=useState<Character[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');useEffect(()=>{if(!user||!profile)return setLoading(false);getCharacters(user.uid,profile.role==='admin').then(setChars).catch(()=>setError('Não foi possível localizar personagens autorizados.')).finally(()=>setLoading(false))},[user,profile]);if(loading)return <Loading/>;return <main className="page"><div className="page-heading"><p className="eyebrow">NÚCLEOS VINCULADOS</p><h1>Selecionar personagem</h1><p>Escolha uma identidade para inicializar a interface de campo.</p></div>{(error||authError)&&<ErrorState text={error||authError||''}/>}<Panel className="character-list">{!chars.length?<Empty text="NENHUM PERSONAGEM AUTORIZADO"/>:chars.map(c=><Link className="character-row" to={`/system/${c.id}`} key={c.id}>{c.avatarUrl?<img src={c.avatarUrl} alt=""/>:<div className="avatar-placeholder"><ScanFace/></div>}<div><b>{c.name}</b><span>{c.nickname||'Identidade sem codinome'}</span><small>CAPACIDADE // {c.carryingCapacity} KG</small></div><ChevronRight/></Link>)}</Panel></main>}
+import { useEffect, useState } from "react";
+import { ChevronRight, ScanFace } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Empty, ErrorState, Loading, Panel } from "../components/Ui";
+import { useAuth } from "../features/auth/AuthContext";
+import { getCharacters } from "../services/characterService";
+import type { Character } from "../types";
+export function CharactersPage() {
+  const { user, profile, error: authError } = useAuth();
+  const [chars, setChars] = useState<Character[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  useEffect(() => {
+    if (!user || !profile) return setLoading(false);
+    getCharacters(user.uid, profile.role === "admin")
+      .then(setChars)
+      .catch(() =>
+        setError("Não foi possível localizar personagens autorizados."),
+      )
+      .finally(() => setLoading(false));
+  }, [user, profile]);
+  if (loading) return <Loading />;
+  return (
+    <main className="page">
+      <div className="page-heading">
+        <p className="eyebrow">NÚCLEOS VINCULADOS</p>
+        <h1>Selecionar personagem</h1>
+        <p>Escolha uma identidade para inicializar a interface de campo.</p>
+      </div>
+      {(error || authError) && <ErrorState text={error || authError || ""} />}
+      <Panel className="character-list">
+        {!chars.length ? (
+          <Empty text="NENHUM PERSONAGEM AUTORIZADO" />
+        ) : (
+          chars.map((c) => (
+            <Link className="character-row" to={`/system/${c.id}`} key={c.id}>
+              {c.avatarUrl ? (
+                <img src={c.avatarUrl} alt="" />
+              ) : (
+                <div className="avatar-placeholder">
+                  <ScanFace />
+                </div>
+              )}
+              <div>
+                <b>{c.name}</b>
+                <span>{c.nickname || "Identidade sem codinome"}</span>
+                <small>CAPACIDADE // {c.carryingCapacity} KG</small>
+              </div>
+              <ChevronRight />
+            </Link>
+          ))
+        )}
+      </Panel>
+    </main>
+  );
+}

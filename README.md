@@ -48,7 +48,7 @@ Para jogadores use `role: "player"`. Esse bootstrap deve ser feito pelo Console 
 - `items/{itemId}`: definição global com categoria, raridade, peso, empilhamento, slots e tags;
 - `characters/{characterId}/inventory/{inventoryItemId}`: referência `itemId`, quantidade, estado/slot de equipamento e timestamps.
 
-Peso total, percentual e status são derivados no navegador, nunca persistidos. Itens equipados continuam no peso. O catálogo não é duplicado no inventário. Entregas empilháveis usam transação; quantidade zero remove o documento. Excluir personagem no cliente **não exclui subcoleções**: por segurança, remova seu inventário antes no Console. Excluir catálogo pode deixar referências órfãs; a UI omite tais entradas e a confirmação alerta o GM.
+Peso total, percentual e status são derivados no navegador, nunca persistidos. Itens equipados continuam no peso. O catálogo não é duplicado no inventário. Itens empilháveis usam um documento determinístico com ID igual ao `itemId`; entregas concorrentes usam transação e quantidade zero remove o documento. Ao excluir um personagem, o serviço apaga seu inventário em batches de até 450 operações antes do documento principal. Uma definição global só pode ser excluída quando uma consulta `collectionGroup` confirma que nenhum inventário ainda a referencia.
 
 ## Permissões e regras
 
@@ -57,15 +57,14 @@ Peso total, percentual e status são derivados no navegador, nunca persistidos. 
 Publique regras e índices usando Firebase CLI autenticada no projeto existente:
 
 ```bash
-npx firebase-tools use TELAPRINCIPAL
-npx firebase-tools deploy --only firestore:rules,firestore:indexes
+npx firebase-tools deploy --project telaprincipal-23a86 --only firestore:rules,firestore:indexes
 ```
 
 Alternativamente, cole `firestore.rules` na aba Rules do Firestore. A unicidade de slot é validada pela transação/UI, mas o Firestore Rules não consegue consultar atomicamente “qualquer documento em uma subcoleção”; para segurança absoluta contra clientes modificados numa futura escala, migre ocupação para documentos determinísticos `equipment/{slot}` ou uma Cloud Function. Compatibilidade e limites administrativos permanecem protegidos.
 
 ## Operação
 
-Após login, `/characters` consulta somente identidades autorizadas (admin vê todas). `/system/:id` apresenta busca, filtros, ordenações, detalhe, equipamento e carga em tempo real. `/admin` fornece CRUD de catálogo/personagens e entrega transacional de itens. Contas player não acessam a rota nem as operações pelas Rules.
+O Project ID Firebase usado para publicação é `telaprincipal-23a86`. Após login, `/characters` consulta somente identidades autorizadas (admin vê todas). `/system/:id` apresenta busca, filtros, ordenações, detalhe, equipamento e carga em tempo real. `/admin` fornece CRUD de catálogo/personagens e entrega transacional de itens. Contas player não acessam a rota nem as operações pelas Rules.
 
 Categorias ficam em `src/config/itemCategories.ts`, raridades em `itemRarities.ts`, slots em `equipmentSlots.ts` e faixas de carga em `encumbrance.ts`. Para ampliar, adicione o valor ao tipo correspondente em `src/types/index.ts`, à configuração e à lista equivalente de `firestore.rules` quando aplicável.
 

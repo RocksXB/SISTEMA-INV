@@ -1,3 +1,26 @@
-import type { ItemRarity } from '../types';
-export const ITEM_RARITIES:ReadonlyArray<{value:ItemRarity;label:string;priority:number;className:string}>=[{value:'common',label:'Comum',priority:1,className:'rarity-common'},{value:'uncommon',label:'Incomum',priority:2,className:'rarity-uncommon'},{value:'rare',label:'Raro',priority:3,className:'rarity-rare'},{value:'epic',label:'Épico',priority:4,className:'rarity-epic'},{value:'legendary',label:'Lendário',priority:5,className:'rarity-legendary'},{value:'mythic',label:'Mítico',priority:6,className:'rarity-mythic'}];
-export const rarityConfig=(value:ItemRarity)=>ITEM_RARITIES.find(x=>x.value===value)??ITEM_RARITIES[0];
+import type { ItemRarity } from "../types";
+export const ITEM_RARITIES: ReadonlyArray<{
+  value: ItemRarity;
+  label: string;
+  priority: number;
+  className: string;
+}> = [
+  { value: "common", label: "Comum", priority: 1, className: "rarity-common" },
+  {
+    value: "uncommon",
+    label: "Incomum",
+    priority: 2,
+    className: "rarity-uncommon",
+  },
+  { value: "rare", label: "Raro", priority: 3, className: "rarity-rare" },
+  { value: "epic", label: "Épico", priority: 4, className: "rarity-epic" },
+  {
+    value: "legendary",
+    label: "Lendário",
+    priority: 5,
+    className: "rarity-legendary",
+  },
+  { value: "mythic", label: "Mítico", priority: 6, className: "rarity-mythic" },
+];
+export const rarityConfig = (value: ItemRarity) =>
+  ITEM_RARITIES.find((x) => x.value === value) ?? ITEM_RARITIES[0];

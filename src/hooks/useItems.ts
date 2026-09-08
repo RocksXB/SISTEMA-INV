@@ -1,2 +1,23 @@
-import { useEffect,useState } from 'react'; import { subscribeItems } from '../services/itemService'; import type { ItemDefinition } from '../types';
-export function useItems(){const [items,setItems]=useState<ItemDefinition[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');useEffect(()=>subscribeItems(v=>{setItems(v);setLoading(false)},()=>{setError('Falha ao sincronizar o catálogo.');setLoading(false)}),[]);return {items,loading,error}}
+import { useEffect, useState } from "react";
+import { subscribeItems } from "../services/itemService";
+import type { ItemDefinition } from "../types";
+export function useItems() {
+  const [items, setItems] = useState<ItemDefinition[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  useEffect(
+    () =>
+      subscribeItems(
+        (v) => {
+          setItems(v);
+          setLoading(false);
+        },
+        () => {
+          setError("Falha ao sincronizar o catálogo.");
+          setLoading(false);
+        },
+      ),
+    [],
+  );
+  return { items, loading, error };
+}

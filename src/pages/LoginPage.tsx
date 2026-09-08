@@ -1,2 +1,81 @@
-import { useState,type FormEvent } from 'react';import { LockKeyhole,Mail,ShieldCheck } from 'lucide-react';import { Navigate } from 'react-router-dom';import { useAuth } from '../features/auth/AuthContext';import { firebaseConfigured } from '../lib/firebase';import { login } from '../services/authService';
-export function LoginPage(){const {user,loading}=useAuth();const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);if(!loading&&user)return <Navigate to="/characters" replace/>;async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{await login(email,password)}catch(e){setError(e instanceof Error?e.message:'Falha de autenticação.')}finally{setBusy(false)}}return <main className="login-page"><div className="login-decoration" aria-hidden="true"/><section className="login-card"><div className="login-emblem"><ShieldCheck/></div><p className="eyebrow">PROTOCOLO DE ACESSO // 01</p><h1>SISTEMA</h1><p className="login-subtitle">IDENTIFICAÇÃO NECESSÁRIA</p>{!firebaseConfigured&&<div className="form-error">Firebase não configurado. Preencha as variáveis de ambiente.</div>}<form onSubmit={submit}><label><span><Mail/> E-mail</span><input type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="operador@exemplo.com"/></label><label><span><LockKeyhole/> Senha</span><input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"/></label>{error&&<div className="form-error" role="alert">{error}</div>}<button className="primary" disabled={busy||!firebaseConfigured}>{busy?'AUTENTICANDO...':'ACESSAR SISTEMA'}</button></form><small>CONEXÃO CRIPTOGRAFADA // FIREBASE AUTH</small></section></main>}
+import { useState, type FormEvent } from "react";
+import { LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../features/auth/AuthContext";
+import { firebaseConfigured } from "../lib/firebase";
+import { login } from "../services/authService";
+export function LoginPage() {
+  const { user, loading } = useAuth();
+  const [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  if (!loading && user) return <Navigate to="/characters" replace />;
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await login(email, password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha de autenticação.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="login-page">
+      <div className="login-decoration" aria-hidden="true" />
+      <section className="login-card">
+        <div className="login-emblem">
+          <ShieldCheck />
+        </div>
+        <p className="eyebrow">PROTOCOLO DE ACESSO // 01</p>
+        <h1>SISTEMA</h1>
+        <p className="login-subtitle">IDENTIFICAÇÃO NECESSÁRIA</p>
+        {!firebaseConfigured && (
+          <div className="form-error">
+            Firebase não configurado. Preencha as variáveis de ambiente.
+          </div>
+        )}
+        <form onSubmit={submit}>
+          <label>
+            <span>
+              <Mail /> E-mail
+            </span>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="operador@exemplo.com"
+            />
+          </label>
+          <label>
+            <span>
+              <LockKeyhole /> Senha
+            </span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </label>
+          {error && (
+            <div className="form-error" role="alert">
+              {error}
+            </div>
+          )}
+          <button className="primary" disabled={busy || !firebaseConfigured}>
+            {busy ? "AUTENTICANDO..." : "ACESSAR SISTEMA"}
+          </button>
+        </form>
+        <small>CONEXÃO CRIPTOGRAFADA // FIREBASE AUTH</small>
+      </section>
+    </main>
+  );
+}

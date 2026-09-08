@@ -6,6 +6,19 @@ service cloud.firestore {
     function admin() { return signedIn() && profile().data.role == 'admin'; }
     function owns(characterId) { return signedIn() && get(/databases/$(database)/documents/characters/$(characterId)).data.ownerId == request.auth.uid; }
     function validSlot(slot) { return slot in ['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2']; }
+    function itemForInventory() { return get(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data; }
+    function validInventory() {
+      return request.resource.data.quantity is int
+        && request.resource.data.quantity >= 1
+        && ((itemForInventory().stackable == true && request.resource.data.quantity <= itemForInventory().maxStack)
+          || (itemForInventory().stackable == false && request.resource.data.quantity == 1))
+        && ((!request.resource.data.equipped && request.resource.data.equipmentSlot == null)
+          || (request.resource.data.equipped
+            && request.resource.data.quantity == 1
+            && validSlot(request.resource.data.equipmentSlot)
+            && itemForInventory().equippable == true
+            && request.resource.data.equipmentSlot in itemForInventory().allowedEquipmentSlots));
+    }
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || admin());
       allow create, update, delete: if admin();
@@ -19,19 +32,17 @@ service cloud.firestore {
       allow write: if admin();
       match /inventory/{inventoryId} {
         allow read: if admin() || owns(characterId);
-        allow create, delete: if admin();
-        allow update: if admin() || (owns(characterId)
+        allow create: if admin() && validInventory();
+        allow delete: if admin();
+        allow update: if (admin() && validInventory()) || (owns(characterId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipped','equipmentSlot','updatedAt'])
           && request.resource.data.itemId == resource.data.itemId
           && request.resource.data.quantity == resource.data.quantity
-          && ((!request.resource.data.equipped && request.resource.data.equipmentSlot == null)
-            || (request.resource.data.equipped
-              && request.resource.data.quantity == 1
-              && validSlot(request.resource.data.equipmentSlot)
-              && get(/databases/$(database)/documents/items/$(resource.data.itemId)).data.equippable == true
-              && request.resource.data.equipmentSlot in get(/databases/$(database)/documents/items/$(resource.data.itemId)).data.allowedEquipmentSlots)));
+          && validInventory());
       }
     }
+    // Authorizes the admin-only collection-group lookup used to prevent orphaned item references.
+    match /{path=**}/inventory/{inventoryId} { allow read: if admin(); }
     match /{document=**} { allow read, write: if false; }
   }
 }
