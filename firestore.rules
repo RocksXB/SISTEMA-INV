@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function admin() { return signedIn() && profile().data.role == 'admin'; }
+    function owns(characterId) { return signedIn() && get(/databases/$(database)/documents/characters/$(characterId)).data.ownerId == request.auth.uid; }
+    function validSlot(slot) { return slot in ['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2']; }
+    function itemForInventory() { return getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data; }
+    function validInventory() {
+      return request.resource.data.quantity is int
+        && request.resource.data.quantity >= 1
+        && ((itemForInventory().stackable == true && request.resource.data.quantity <= itemForInventory().maxStack)
+          || (itemForInventory().stackable == false && request.resource.data.quantity == 1))
+        && ((!request.resource.data.equipped && request.resource.data.equipmentSlot == null)
+          || (request.resource.data.equipped
+            && request.resource.data.quantity == 1
+            && validSlot(request.resource.data.equipmentSlot)
+            && itemForInventory().equippable == true
+            && request.resource.data.equipmentSlot in itemForInventory().allowedEquipmentSlots));
+    }
+    function validRequest() {
+      return request.resource.data.requestedBy is string
+        && request.resource.data.characterId is string
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.category in ['weapon','armor','accessory','consumable','tool','material','quest','miscellaneous']
+        && request.resource.data.rarity in ['common','uncommon','rare','epic','legendary','mythic']
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 10
+        && (request.resource.data.tags.size() < 1 || request.resource.data.tags[0] is string)
+        && (request.resource.data.tags.size() < 2 || request.resource.data.tags[1] is string)
+        && (request.resource.data.tags.size() < 3 || request.resource.data.tags[2] is string)
+        && (request.resource.data.tags.size() < 4 || request.resource.data.tags[3] is string)
+        && (request.resource.data.tags.size() < 5 || request.resource.data.tags[4] is string)
+        && (request.resource.data.tags.size() < 6 || request.resource.data.tags[5] is string)
+        && (request.resource.data.tags.size() < 7 || request.resource.data.tags[6] is string)
+        && (request.resource.data.tags.size() < 8 || request.resource.data.tags[7] is string)
+        && (request.resource.data.tags.size() < 9 || request.resource.data.tags[8] is string)
+        && (request.resource.data.tags.size() < 10 || request.resource.data.tags[9] is string)
+        && (!request.resource.data.keys().hasAny(['imageUrl']) || request.resource.data.imageUrl is string)
+        && request.resource.data.status in ['pending','approved','rejected']
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity >= 1
+        && request.resource.data.weight is number
+        && request.resource.data.weight >= 0
+        && request.resource.data.maxStack is int
+        && request.resource.data.maxStack >= 1
+        && request.resource.data.stackable is bool
+        && (request.resource.data.stackable || request.resource.data.maxStack == 1)
+        && (!request.resource.data.stackable || request.resource.data.quantity <= request.resource.data.maxStack)
+        && request.resource.data.equippable is bool
+        && request.resource.data.allowedEquipmentSlots is list
+        && ((!request.resource.data.equippable && request.resource.data.allowedEquipmentSlots.size() == 0)
+          || (request.resource.data.equippable
+            && request.resource.data.allowedEquipmentSlots.size() > 0
+            && request.resource.data.allowedEquipmentSlots.hasOnly(['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2'])));
+    }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || admin());
+      allow create, update, delete: if admin();
+    }
+    match /items/{itemId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    match /characters/{characterId} {
+      allow read: if admin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow write: if admin();
+      match /inventory/{inventoryId} {
+        allow read: if admin() || owns(characterId);
+        allow create: if admin() && validInventory();
+        allow delete: if admin();
+        allow update: if (admin() && validInventory()) || (owns(characterId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipped','equipmentSlot','updatedAt'])
+          && request.resource.data.itemId == resource.data.itemId
+          && request.resource.data.quantity == resource.data.quantity
+          && validInventory());
+      }
+    }
+    match /itemRequests/{requestId} {
+      allow read: if admin() || (signedIn() && resource.data.requestedBy == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['requestedBy','characterId','status','name','description','category','weight','imageUrl','rarity','stackable','maxStack','equippable','allowedEquipmentSlots','tags','quantity','createdAt','updatedAt'])
+        && request.resource.data.requestedBy == request.auth.uid
+        && get(/databases/$(database)/documents/characters/$(request.resource.data.characterId)).data.ownerId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && !request.resource.data.keys().hasAny(['reviewedBy','reviewedAt','approvedItemId','adminNote'])
+        && validRequest();
+      allow update: if admin()
+        && validRequest()
+        && request.resource.data.updatedAt == request.time
+        && ((request.resource.data.status == 'pending'
+            && !request.resource.data.keys().hasAny(['reviewedBy','reviewedAt','approvedItemId']))
+          || (request.resource.data.status == 'rejected'
+            && request.resource.data.reviewedBy == request.auth.uid
+            && request.resource.data.reviewedAt == request.time)
+          || (request.resource.data.status == 'approved'
+            && request.resource.data.reviewedBy == request.auth.uid
+            && request.resource.data.reviewedAt == request.time
+            && request.resource.data.approvedItemId is string));
+      allow delete: if admin() || (signedIn()
+        && resource.data.requestedBy == request.auth.uid
+        && resource.data.status == 'pending');
+    }
+    // Authorizes the admin-only collection-group lookup used to prevent orphaned item references.
+    match /{path=**}/inventory/{inventoryId} { allow read: if admin(); }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
