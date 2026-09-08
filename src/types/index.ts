@@ -27,6 +27,7 @@ export type EquipmentSlot =
   | "accessory1"
   | "accessory2";
 export type EncumbranceStatus = "normal" | "loaded" | "heavy" | "overloaded";
+export type ItemRequestStatus = "pending" | "approved" | "rejected";
 type DateValue = Timestamp | null;
 export interface UserProfile {
   id: string;
@@ -77,3 +78,41 @@ export interface InventoryItem {
 export interface HydratedInventoryItem extends InventoryItem {
   definition: ItemDefinition;
 }
+export interface ItemRequest {
+  id: string;
+  requestedBy: string;
+  characterId: string;
+  status: ItemRequestStatus;
+  name: string;
+  description: string;
+  category: ItemCategory;
+  weight: number;
+  imageUrl?: string;
+  rarity: ItemRarity;
+  stackable: boolean;
+  maxStack: number;
+  equippable: boolean;
+  allowedEquipmentSlots: EquipmentSlot[];
+  tags: string[];
+  quantity: number;
+  createdAt?: DateValue;
+  updatedAt?: DateValue;
+  reviewedAt?: DateValue;
+  reviewedBy?: string;
+  adminNote?: string;
+  approvedItemId?: string;
+}
+
+export type ItemRequestDraft = Omit<
+  ItemRequest,
+  | "id"
+  | "requestedBy"
+  | "characterId"
+  | "status"
+  | "createdAt"
+  | "updatedAt"
+  | "reviewedAt"
+  | "reviewedBy"
+  | "adminNote"
+  | "approvedItemId"
+>;
