@@ -10,7 +10,7 @@ import {
 import { Navigate, useParams } from "react-router-dom";
 import { EQUIPMENT_SLOTS, slotLabel } from "../config/equipmentSlots";
 import { ENCUMBRANCE_CONFIG } from "../config/encumbrance";
-import { ITEM_CATEGORIES } from "../config/itemCategories";
+import { ITEM_CATEGORIES, categoryLabel } from "../config/itemCategories";
 import { ITEM_RARITIES, rarityConfig } from "../config/itemRarities";
 import { InventoryCard } from "../components/InventoryCard";
 import { PlayerItemRequests } from "../components/PlayerItemRequests";
@@ -295,80 +295,129 @@ export function SystemPage() {
         />
       )}
       {selected && (
-        <Modal title="Registro de item" onClose={() => setSelected(null)}>
-          <div className="item-detail">
-            <div className="detail-image">
-              {selected.definition.imageUrl ? (
-                <img src={selected.definition.imageUrl} alt="" />
-              ) : (
-                <ScanFace />
-              )}
-            </div>
-            <p className="eyebrow">
-              {rarityConfig(selected.definition.rarity).label} //{" "}
-              {selected.definition.category}
-            </p>
-            <h2>{selected.customName || selected.definition.name}</h2>
-            <p>
-              {selected.definition.description || "Sem descrição registrada."}
-            </p>
-            <dl>
-              <div>
-                <dt>Quantidade</dt>
-                <dd>×{selected.quantity}</dd>
-              </div>
-              <div>
-                <dt>Peso unitário</dt>
-                <dd>{formatWeight(selected.definition.weight)}</dd>
-              </div>
-              <div>
-                <dt>Peso da pilha</dt>
-                <dd>
-                  {formatWeight(
-                    calculateStackWeight(
-                      selected.definition.weight,
-                      selected.quantity,
-                    ),
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd>
-                  {selected.equipped
-                    ? `Equipado // ${slotLabel(selected.equipmentSlot!)}`
-                    : "Guardado"}
-                </dd>
-              </div>
-            </dl>
-            <div className="tags">
-              {selected.definition.tags.map((t) => (
-                <span key={t}>#{t}</span>
-              ))}
-            </div>
-            {selected.equipped ? (
-              <button className="danger" onClick={() => void toggle()}>
-                DESEQUIPAR
-              </button>
-            ) : selected.definition.equippable ? (
-              <div className="slot-actions">
-                <span>SELECIONE O SLOT</span>
-                {selected.definition.allowedEquipmentSlots.map((s) => (
-                  <button
-                    className="primary"
-                    key={s}
-                    onClick={() => void doEquip(s)}
+        <Modal
+          title="Detalhes do item"
+          className="item-detail-modal"
+          onClose={() => setSelected(null)}
+        >
+          <article className="item-detail">
+            <div className="item-detail-body">
+              <figure className="item-preview-panel">
+                <div className="item-preview-badges">
+                  <span
+                    className={
+                      rarityConfig(selected.definition.rarity).className
+                    }
                   >
-                    {slotLabel(s)}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="locked">
-                <AlertTriangle /> ITEM NÃO EQUIPÁVEL
-              </p>
-            )}
-          </div>
+                    {rarityConfig(selected.definition.rarity).label}
+                  </span>
+                  <span>{categoryLabel(selected.definition.category)}</span>
+                </div>
+                {selected.definition.imageUrl ? (
+                  <img
+                    src={selected.definition.imageUrl}
+                    alt={`Visual de ${selected.customName || selected.definition.name}`}
+                  />
+                ) : (
+                  <div className="item-preview-placeholder">
+                    <ScanFace />
+                    <span>SEM IMAGEM REGISTRADA</span>
+                  </div>
+                )}
+              </figure>
+              <section
+                className="item-information"
+                aria-label="Informações do item"
+              >
+                <div className="item-detail-heading">
+                  <p className="eyebrow">
+                    REGISTRO // {selected.definition.id}
+                  </p>
+                  <h3>{selected.customName || selected.definition.name}</h3>
+                </div>
+                <section
+                  className="item-description"
+                  aria-labelledby="item-description-title"
+                >
+                  <h3 id="item-description-title">Descrição</h3>
+                  <p>
+                    {selected.definition.description ||
+                      "Sem descrição registrada."}
+                  </p>
+                </section>
+                <dl className="item-meta-grid">
+                  <div>
+                    <dt>Quantidade</dt>
+                    <dd>×{selected.quantity}</dd>
+                  </div>
+                  <div>
+                    <dt>Peso unitário</dt>
+                    <dd>{formatWeight(selected.definition.weight)}</dd>
+                  </div>
+                  <div>
+                    <dt>Peso da pilha</dt>
+                    <dd>
+                      {formatWeight(
+                        calculateStackWeight(
+                          selected.definition.weight,
+                          selected.quantity,
+                        ),
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{selected.equipped ? "Equipado" : "Guardado"}</dd>
+                  </div>
+                </dl>
+                {selected.equipmentSlot && (
+                  <section className="item-slot-section">
+                    <span>Slot atual</span>
+                    <b>{slotLabel(selected.equipmentSlot)}</b>
+                  </section>
+                )}
+                <section className="item-tags" aria-label="Tags do item">
+                  <h3>Tags</h3>
+                  <div className="tags">
+                    {selected.definition.tags.length ? (
+                      selected.definition.tags.map((tag) => (
+                        <span key={tag}>#{tag}</span>
+                      ))
+                    ) : (
+                      <small>NENHUMA TAG REGISTRADA</small>
+                    )}
+                  </div>
+                </section>
+              </section>
+            </div>
+            <footer className="item-action-footer">
+              <button className="secondary" onClick={() => setSelected(null)}>
+                FECHAR
+              </button>
+              {selected.equipped ? (
+                <button className="danger" onClick={() => void toggle()}>
+                  DESEQUIPAR
+                </button>
+              ) : selected.definition.equippable ? (
+                <div className="slot-actions">
+                  <span>Equipar em</span>
+                  {selected.definition.allowedEquipmentSlots.map((slot) => (
+                    <button
+                      className="primary"
+                      key={slot}
+                      onClick={() => void doEquip(slot)}
+                    >
+                      {slotLabel(slot)}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="locked">
+                  <AlertTriangle /> ITEM NÃO EQUIPÁVEL
+                </p>
+              )}
+            </footer>
+          </article>
         </Modal>
       )}
       {notice && (

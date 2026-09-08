@@ -45,10 +45,12 @@ export function Modal({
   title,
   onClose,
   children,
+  className = "",
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  className?: string;
 }) {
   const modalRef = useRef<HTMLElement>(null),
     closeRef = useRef(onClose);
@@ -105,7 +107,7 @@ export function Modal({
       <section
         ref={modalRef}
         tabIndex={-1}
-        className="modal"
+        className={`modal ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
