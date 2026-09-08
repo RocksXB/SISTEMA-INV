@@ -136,8 +136,12 @@ export const deleteItemRequest = (requestId: string) =>
 export async function approveItemRequest(
   requestId: string,
   reviewedBy: string,
-  option: { existingItemId: string } | { create: ItemRequestDraft },
+  option:
+    | { existingItemId: string; reviewed: ItemRequestDraft }
+    | { create: ItemRequestDraft },
 ) {
+  const reviewedDraft =
+    "existingItemId" in option ? option.reviewed : option.create;
   const requestRef = doc(requests, requestId);
   const itemRef =
     "existingItemId" in option
@@ -178,7 +182,7 @@ export async function approveItemRequest(
       if (errors.length) throw new Error(errors[0]);
       definition = buildItemDefinitionFromRequest(itemRef.id, option.create);
     }
-    const errors = validateItemRequest(current, definition);
+    const errors = validateItemRequest(reviewedDraft, definition);
     if (errors.length) throw new Error(errors[0]);
 
     const inventoryCollection = collection(
@@ -193,7 +197,7 @@ export async function approveItemRequest(
     if (definition.stackable) {
       stackRef = doc(inventoryCollection, definition.id);
       stackSnapshot = await transaction.get(stackRef);
-    } else if (current.quantity > 450) {
+    } else if (reviewedDraft.quantity > 450) {
       throw new Error("Uma aprovação não pode criar mais de 450 entradas.");
     }
 
@@ -212,7 +216,7 @@ export async function approveItemRequest(
         const existing = stackSnapshot.data() as InventoryItem;
         const next = calculateApprovedStackQuantity(
           existing,
-          current.quantity,
+          reviewedDraft.quantity,
           definition.maxStack,
         );
         transaction.update(stackRef, {
@@ -222,7 +226,7 @@ export async function approveItemRequest(
       } else {
         transaction.set(stackRef, {
           itemId: definition.id,
-          quantity: current.quantity,
+          quantity: reviewedDraft.quantity,
           equipped: false,
           equipmentSlot: null,
           acquiredAt: serverTimestamp(),
@@ -232,7 +236,7 @@ export async function approveItemRequest(
     } else {
       const grants = buildInventoryGrants(
         definition.id,
-        current.quantity,
+        reviewedDraft.quantity,
         false,
       );
       for (let index = 0; index < grants.length; index += 1) {
@@ -247,6 +251,7 @@ export async function approveItemRequest(
       }
     }
     transaction.update(requestRef, {
+      ...reviewedDraft,
       status: "approved",
       reviewedBy,
       reviewedAt: serverTimestamp(),

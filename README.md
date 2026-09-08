@@ -73,6 +73,10 @@ Na HUD do próprio personagem, o player pode preencher **Enviar item para aprova
 
 Em `/admin`, a aba **Solicitações** mostra pendências primeiro e um badge com a quantidade pendente. O GM pode corrigir todos os dados, rejeitar com observação, excluir ou aprovar criando uma nova definição global ou vinculando uma já existente. A aprovação lê novamente o status e realiza catálogo, inventário e revisão na mesma transação, impedindo aprovação dupla. Pilhas usam o ID determinístico do item e respeitam `maxStack`; itens não empilháveis são criados como entradas unitárias. Players nunca escrevem em `/items` nem alteram quantidades de inventário.
 
+O formulário de revisão administrativa é controlado pelo componente pai. Portanto, ao clicar em **Aprovar**, as alterações atualmente visíveis são validadas e gravadas atomicamente junto da aprovação, mesmo que o GM não tenha usado antes **Salvar alterações**.
+
+`npm test` executa os testes unitários e, por meio do Firebase Emulator, os testes reais de `firestore.rules` em `tests/firestore.rules.test.ts`. É necessário ter Java disponível para iniciar o emulador.
+
 Categorias ficam em `src/config/itemCategories.ts`, raridades em `itemRarities.ts`, slots em `equipmentSlots.ts` e faixas de carga em `encumbrance.ts`. Para ampliar, adicione o valor ao tipo correspondente em `src/types/index.ts`, à configuração e à lista equivalente de `firestore.rules` quando aplicável.
 
 ## Cloudflare Pages

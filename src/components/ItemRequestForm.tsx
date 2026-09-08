@@ -27,17 +27,29 @@ export const EMPTY_REQUEST: ItemRequestDraft = {
 
 export function ItemRequestForm({
   initial = EMPTY_REQUEST,
+  value: controlledValue,
+  onChange,
   submitLabel,
   onSubmit,
 }: {
   initial?: ItemRequestDraft;
+  value?: ItemRequestDraft;
+  onChange?: (draft: ItemRequestDraft) => void;
   submitLabel: string;
   onSubmit: (draft: ItemRequestDraft) => Promise<void>;
 }) {
-  const [value, setValue] = useState<ItemRequestDraft>(initial);
+  const [internalValue, setInternalValue] = useState<ItemRequestDraft>(initial);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const value = controlledValue ?? internalValue;
+  const setValue = (
+    next: ItemRequestDraft | ((current: ItemRequestDraft) => ItemRequestDraft),
+  ) => {
+    const resolved = typeof next === "function" ? next(value) : next;
+    if (onChange) onChange(resolved);
+    else setInternalValue(resolved);
+  };
   const toggleSlot = (slot: EquipmentSlot) =>
     setValue((current) => ({
       ...current,

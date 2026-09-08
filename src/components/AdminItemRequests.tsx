@@ -136,7 +136,7 @@ function RequestReview({
         request.id,
         adminUid,
         mode === "existing"
-          ? { existingItemId: existingId }
+          ? { existingItemId: existingId, reviewed: draft }
           : { create: draft },
       );
       onClose();
@@ -189,7 +189,8 @@ function RequestReview({
       {request.status === "pending" ? (
         <>
           <ItemRequestForm
-            initial={draft}
+            value={draft}
+            onChange={setDraft}
             submitLabel="SALVAR ALTERAÇÕES"
             onSubmit={save}
           />
