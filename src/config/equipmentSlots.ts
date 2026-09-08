@@ -12,6 +12,9 @@ export const EQUIPMENT_SLOTS: ReadonlyArray<{
   { value: "offHand", label: "Mão secundária" },
   { value: "accessory1", label: "Acessório 1" },
   { value: "accessory2", label: "Acessório 2" },
+  { value: "accessory3", label: "Acessório 3" },
+  { value: "extra1", label: "Extra 1" },
+  { value: "extra2", label: "Extra 2" },
 ];
 export const slotLabel = (value: EquipmentSlot) =>
   EQUIPMENT_SLOTS.find((x) => x.value === value)?.label ?? value;
