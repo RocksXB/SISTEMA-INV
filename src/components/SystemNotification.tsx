@@ -1,0 +1,2 @@
+import { Radio,X } from 'lucide-react'; export interface Notice{title:string;message:string;kind?:'info'|'warning'}
+export function SystemNotification({notice,onClose}:{notice:Notice;onClose:()=>void}){return <div className={`notification ${notice.kind??'info'}`} role="status"><Radio/><div><b>{notice.title}</b><span>{notice.message}</span></div><button onClick={onClose} aria-label="Fechar notificação"><X/></button></div>}

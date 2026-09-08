@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function admin() { return signedIn() && profile().data.role == 'admin'; }
+    function owns(characterId) { return signedIn() && get(/databases/$(database)/documents/characters/$(characterId)).data.ownerId == request.auth.uid; }
+    function validSlot(slot) { return slot in ['head','chest','hands','legs','feet','mainHand','offHand','accessory1','accessory2']; }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || admin());
+      allow create, update, delete: if admin();
+    }
+    match /items/{itemId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    match /characters/{characterId} {
+      allow read: if admin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow write: if admin();
+      match /inventory/{inventoryId} {
+        allow read: if admin() || owns(characterId);
+        allow create, delete: if admin();
+        allow update: if admin() || (owns(characterId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipped','equipmentSlot','updatedAt'])
+          && request.resource.data.itemId == resource.data.itemId
+          && request.resource.data.quantity == resource.data.quantity
+          && ((!request.resource.data.equipped && request.resource.data.equipmentSlot == null)
+            || (request.resource.data.equipped
+              && request.resource.data.quantity == 1
+              && validSlot(request.resource.data.equipmentSlot)
+              && get(/databases/$(database)/documents/items/$(resource.data.itemId)).data.equippable == true
+              && request.resource.data.equipmentSlot in get(/databases/$(database)/documents/items/$(resource.data.itemId)).data.allowedEquipmentSlots)));
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
