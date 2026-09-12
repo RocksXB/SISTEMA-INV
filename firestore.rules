@@ -10,12 +10,12 @@ service cloud.firestore {
     function validInventory() {
       return request.resource.data.quantity is int
         && request.resource.data.quantity >= 1
-        && (!request.resource.data.keys().hasAny(['carried']) || request.resource.data.carried is bool)
+        && request.resource.data.get('carried', true) is bool
         && ((itemForInventory().stackable == true && request.resource.data.quantity <= itemForInventory().maxStack)
           || (itemForInventory().stackable == false && request.resource.data.quantity == 1))
         && ((!request.resource.data.equipped && request.resource.data.equipmentSlot == null)
           || (request.resource.data.equipped
-            && (!request.resource.data.keys().hasAny(['carried']) || request.resource.data.carried == true)
+            && request.resource.data.get('carried', true) == true
             && request.resource.data.quantity == 1
             && validSlot(request.resource.data.equipmentSlot)
             && itemForInventory().equippable == true
