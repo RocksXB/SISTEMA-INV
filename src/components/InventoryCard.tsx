@@ -16,11 +16,15 @@ export function InventoryCard({
     <button className={`item-card ${r.className}`} onClick={onClick}>
       <div className="item-image">
         {i.imageUrl ? <img src={i.imageUrl} alt="" /> : <Box />}
-        {entry.equipped && (
+        {entry.equipped ? (
           <span className="equipped">
             <CheckCircle2 /> EQUIPADO
           </span>
-        )}
+        ) : entry.carried === false ? (
+          <span className="equipped">
+            <Box /> FORA DA CARGA
+          </span>
+        ) : null}
       </div>
       <div className="item-content">
         <small>{categoryLabel(i.category)}</small>
