@@ -167,13 +167,40 @@ describe("itemRequests Firestore Rules", () => {
       }),
     );
   });
-  it("mantém /items e quantity do inventory bloqueados para player", async () => {
+  it("permite ao dono controlar se o item está sendo levado", async () => {
     const alice = environment.authenticatedContext("alice").firestore();
-    await assertFails(setDoc(doc(alice, "items/forged"), { name: "Forjado" }));
-    await assertFails(
-      updateDoc(doc(alice, "characters/alice-character/inventory/entry"), {
-        quantity: 2,
+    const ref = doc(alice, "characters/alice-character/inventory/entry");
+    await assertSucceeds(
+      updateDoc(ref, { carried: false, updatedAt: serverTimestamp() }),
+    );
+    await assertSucceeds(
+      updateDoc(ref, {
+        carried: true,
+        equipped: true,
+        equipmentSlot: "mainHand",
+        updatedAt: serverTimestamp(),
       }),
     );
+    await assertFails(
+      updateDoc(ref, { carried: false, updatedAt: serverTimestamp() }),
+    );
+    await assertSucceeds(
+      updateDoc(ref, {
+        carried: false,
+        equipped: false,
+        equipmentSlot: null,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+  it("nega valor inválido de carried e mantém quantity bloqueada", async () => {
+    const alice = environment.authenticatedContext("alice").firestore();
+    const ref = doc(alice, "characters/alice-character/inventory/entry");
+    await assertFails(updateDoc(ref, { carried: "não" }));
+    await assertFails(updateDoc(ref, { quantity: 2 }));
+  });
+  it("mantém /items bloqueado para player", async () => {
+    const alice = environment.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(alice, "items/forged"), { name: "Forjado" }));
   });
 });
