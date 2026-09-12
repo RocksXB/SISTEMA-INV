@@ -23,7 +23,11 @@ import { useAuth } from "../features/auth/AuthContext";
 import { useInventory } from "../hooks/useInventory";
 import { useItems } from "../hooks/useItems";
 import { subscribeCharacter } from "../services/characterService";
-import { equipItem, unequipItem } from "../services/inventoryService";
+import {
+  equipItem,
+  setCarried,
+  unequipItem,
+} from "../services/inventoryService";
 import type { Character, EquipmentSlot, HydratedInventoryItem } from "../types";
 import {
   calculateEncumbrancePercentage,
@@ -114,6 +118,31 @@ export function SystemPage() {
     try {
       await unequipItem(characterId, selected.id);
       setNotice({ title: "EQUIPAMENTO REMOVIDO", message: "Slot liberado." });
+      setSelected(null);
+    } catch (e) {
+      setNotice({
+        title: "ALERTA",
+        message: e instanceof Error ? e.message : "Operação bloqueada.",
+        kind: "warning",
+      });
+    }
+  }
+  async function toggleCarried() {
+    if (!selected || !characterId) return;
+    const carried = selected.carried === false;
+    try {
+      await setCarried(characterId, selected.id, carried);
+      setNotice(
+        carried
+          ? {
+              title: "ITEM NA CARGA",
+              message: `${selected.customName || selected.definition.name} agora conta no peso carregado.`,
+            }
+          : {
+              title: "ITEM FORA DA CARGA",
+              message: `${selected.customName || selected.definition.name} não conta mais no peso carregado.`,
+            },
+      );
       setSelected(null);
     } catch (e) {
       setNotice({
@@ -369,6 +398,14 @@ export function SystemPage() {
                     <dt>Status</dt>
                     <dd>{selected.equipped ? "Equipado" : "Guardado"}</dd>
                   </div>
+                  <div>
+                    <dt>Carga</dt>
+                    <dd>
+                      {selected.carried === false
+                        ? "Não está levando"
+                        : "Levando consigo"}
+                    </dd>
+                  </div>
                 </dl>
                 {selected.equipmentSlot && (
                   <section className="item-slot-section">
@@ -393,6 +430,12 @@ export function SystemPage() {
             <footer className="item-action-footer">
               <button className="secondary" onClick={() => setSelected(null)}>
                 FECHAR
+              </button>
+              <button
+                className={selected.carried === false ? "primary" : "secondary"}
+                onClick={() => void toggleCarried()}
+              >
+                {selected.carried === false ? "LEVAR CONSIGO" : "NÃO LEVAR"}
               </button>
               {selected.equipped ? (
                 <button className="danger" onClick={() => void toggle()}>
