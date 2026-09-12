@@ -36,6 +36,14 @@ describe("peso", () => {
     ).toBeCloseTo(6.3);
     expect(formatWeight(42.700000001)).toBe("42.7 kg");
   });
+  it("ignora itens marcados como não levados e mantém legados na carga", () => {
+    expect(
+      calculateInventoryWeight([
+        { quantity: 2, definition: sword },
+        { quantity: 5, carried: false, definition: sword },
+      ]),
+    ).toBeCloseTo(4.2);
+  });
   it("calcula percentual e faixas", () => {
     expect(calculateEncumbrancePercentage(35, 70)).toBe(50);
     expect(getEncumbranceStatus(49.99)).toBe("normal");
