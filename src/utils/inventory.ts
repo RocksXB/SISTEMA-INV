@@ -9,11 +9,15 @@ import type {
 export const calculateStackWeight = (weight: number, quantity: number) =>
   Math.max(0, weight) * Math.max(0, quantity);
 export const calculateInventoryWeight = (
-  items: ReadonlyArray<Pick<HydratedInventoryItem, "quantity" | "definition">>,
+  items: ReadonlyArray<
+    Pick<HydratedInventoryItem, "quantity" | "definition" | "carried">
+  >,
 ) =>
   items.reduce(
     (sum, item) =>
-      sum + calculateStackWeight(item.definition.weight, item.quantity),
+      item.carried === false
+        ? sum
+        : sum + calculateStackWeight(item.definition.weight, item.quantity),
     0,
   );
 export const calculateEncumbrancePercentage = (
