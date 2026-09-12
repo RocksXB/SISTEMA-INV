@@ -32,6 +32,7 @@ export async function equipItem(
   const check = canEquipItem(item, slot, all, entry.id);
   if (!check.allowed) throw new Error(check.reason);
   await updateDoc(doc(inv(cid), entry.id), {
+    carried: true,
     equipped: true,
     equipmentSlot: slot,
     updatedAt: serverTimestamp(),
@@ -41,6 +42,17 @@ export const unequipItem = (cid: string, id: string) =>
   updateDoc(doc(inv(cid), id), {
     equipped: false,
     equipmentSlot: null,
+    updatedAt: serverTimestamp(),
+  });
+export const setCarried = (cid: string, id: string, carried: boolean) =>
+  updateDoc(doc(inv(cid), id), {
+    carried,
+    ...(carried
+      ? {}
+      : {
+          equipped: false,
+          equipmentSlot: null,
+        }),
     updatedAt: serverTimestamp(),
   });
 export async function deliverItem(
@@ -64,6 +76,7 @@ export async function deliverItem(
       tx.set(target, {
         itemId: item.id,
         quantity: 1,
+        carried: true,
         equipped: false,
         equipmentSlot: null,
         acquiredAt: serverTimestamp(),
@@ -85,6 +98,7 @@ export async function deliverItem(
       tx.set(target, {
         itemId: item.id,
         quantity: qty,
+        carried: true,
         equipped: false,
         equipmentSlot: null,
         acquiredAt: serverTimestamp(),
