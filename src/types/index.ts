@@ -71,6 +71,7 @@ export interface InventoryItem {
   id: string;
   itemId: string;
   quantity: number;
+  carried?: boolean;
   equipped: boolean;
   equipmentSlot: EquipmentSlot | null;
   acquiredAt?: DateValue;
