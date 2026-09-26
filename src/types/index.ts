@@ -31,6 +31,15 @@ export type EquipmentSlot =
   | "extra2";
 export type EncumbranceStatus = "normal" | "loaded" | "heavy" | "overloaded";
 export type ItemRequestStatus = "pending" | "approved" | "rejected";
+export type SkillType =
+  | "ability"
+  | "technique"
+  | "passive"
+  | "ultimate"
+  | "transformation"
+  | "domain"
+  | "other";
+export type SkillRequestStatus = "pending" | "approved" | "rejected";
 type DateValue = Timestamp | null;
 export interface UserProfile {
   id: string;
@@ -119,4 +128,65 @@ export type ItemRequestDraft = Omit<
   | "reviewedBy"
   | "adminNote"
   | "approvedItemId"
+>;
+
+
+export interface SkillDefinition {
+  id: string;
+  characterId: string;
+  ownerId: string;
+  name: string;
+  type: SkillType;
+  description: string;
+  jetCost: number;
+  cooldown: string;
+  duration: string;
+  damage: string;
+  effect: string;
+  conditions: string;
+  imageUrl?: string;
+  tags: string[];
+  createdBy: string;
+  approvedBy?: string;
+  approvedAt?: DateValue;
+  createdAt?: DateValue;
+  updatedAt?: DateValue;
+}
+
+export interface SkillRequest {
+  id: string;
+  requestedBy: string;
+  characterId: string;
+  status: SkillRequestStatus;
+  name: string;
+  type: SkillType;
+  description: string;
+  jetCost: number;
+  cooldown: string;
+  duration: string;
+  damage: string;
+  effect: string;
+  conditions: string;
+  imageUrl?: string;
+  tags: string[];
+  createdAt?: DateValue;
+  updatedAt?: DateValue;
+  reviewedAt?: DateValue;
+  reviewedBy?: string;
+  adminNote?: string;
+  approvedSkillId?: string;
+}
+
+export type SkillRequestDraft = Omit<
+  SkillRequest,
+  | "id"
+  | "requestedBy"
+  | "characterId"
+  | "status"
+  | "createdAt"
+  | "updatedAt"
+  | "reviewedAt"
+  | "reviewedBy"
+  | "adminNote"
+  | "approvedSkillId"
 >;
