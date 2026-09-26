@@ -146,7 +146,7 @@ export interface SkillDefinition {
   conditions: string;
   imageUrl?: string;
   tags: string[];
-  createdBy: string;
+  createdBy?: string;
   approvedBy?: string;
   approvedAt?: DateValue;
   createdAt?: DateValue;
