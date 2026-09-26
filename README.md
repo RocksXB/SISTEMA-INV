@@ -1,24 +1,72 @@
-# SISTEMA // Inventário
+# SISTEMA-INV // HUD de RPG
 
-HUD web original para gerenciamento de personagens, inventário, equipamento e carga em RPG. A aplicação usa somente **Firebase Authentication (e-mail/senha)** e **Cloud Firestore**; não existe cadastro público, backend próprio ou Realtime Database.
+Aplicação web para gerenciamento de personagens de RPG, inventário, equipamento, carga e habilidades/técnicas. O projeto foi pensado para uso privado de uma mesa de RPG, com uma interface escura/futurista e um fluxo simples entre **Player** e **GM/Admin**.
 
-## Stack e arquitetura
+Este README é também o **documento de contexto do projeto**. Se este repositório for aberto em outro chat, no ChatGPT Work ou por outro agente de desenvolvimento, leia este arquivo antes de modificar qualquer coisa.
 
-- React 19, TypeScript, Vite, React Router e Lucide;
-- Firebase SDK modular (`getAuth` e `getFirestore`);
-- CSS responsivo próprio, com tokens visuais e suporte a `prefers-reduced-motion`;
-- serviços em `src/services`, regras puras em `src/utils`, configurações em `src/config`, páginas em `src/pages`;
-- listeners Firestore somente para personagem, catálogo e inventário ativos, sempre cancelados pelo React.
+---
 
-## Instalação e execução
+## 1. Objetivo do projeto
 
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
-```
+O sistema serve como uma ficha operacional do personagem durante o RPG.
 
-Preencha as seis variáveis do Web App **SISTEMA-INV** no `.env.local`:
+Hoje ele cobre:
+
+- autenticação de GM e players;
+- personagens vinculados ao UID do jogador;
+- catálogo global de itens;
+- inventário por personagem;
+- peso carregado e capacidade;
+- itens que podem ficar "fora da carga" sem serem apagados;
+- slots de equipamento;
+- solicitação de itens pelo player com aprovação do GM;
+- habilidades/técnicas oficiais por personagem;
+- solicitação de habilidades pelo player com aprovação do GM;
+- edição administrativa pelo site;
+- edição manual de dados pelo Firebase Console em caso de emergência.
+
+Não existe sistema de Level, XP ou Class.
+
+---
+
+## 2. Stack
+
+- React 19;
+- TypeScript;
+- Vite;
+- React Router;
+- Lucide React;
+- Firebase Authentication;
+- Cloud Firestore;
+- Firebase Emulator para testes das Rules;
+- Cloudflare Pages para deploy.
+
+O frontend usa apenas Firebase SDK modular.
+
+### Firebase
+
+Projeto atual:
+
+- Project ID: `telaprincipal-23a86`;
+- Web App: `SISTEMA-INV`;
+- Authentication: Email/Password;
+- Banco: Cloud Firestore.
+
+**Não usar Realtime Database.**
+
+Não adicionar:
+
+- `databaseURL`;
+- `firebase/database`;
+- `getDatabase`;
+- `VITE_FIREBASE_DATABASE_URL`;
+- Admin SDK ou service account no frontend.
+
+---
+
+## 3. Variáveis de ambiente
+
+O frontend usa somente:
 
 ```env
 VITE_FIREBASE_API_KEY=
@@ -29,62 +77,652 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 ```
 
-Obtenha-as em Firebase Console → Configurações do projeto → Seus apps → SISTEMA-INV. Não adicione `databaseURL`. Reinicie o Vite depois de alterá-las. Para validar: `npm run lint`, `npm run typecheck`, `npm test` e `npm run build`.
+`.env` e `.env.local` não devem ser commitados.
 
-## Autenticação e primeiro administrador
-
-Crie as duas contas manualmente em Firebase Console → Authentication → Users. Não há cadastro público. Em seguida, no Firestore Console, crie manualmente `users/{UID}` para cada conta:
-
-```js
-{ displayName: "GM", email: "gm@exemplo.com", role: "admin", createdAt: <timestamp>, updatedAt: <timestamp> }
-```
-
-Para jogadores use `role: "player"`. Esse bootstrap deve ser feito pelo Console (acesso privilegiado do proprietário) porque as regras deliberadamente impedem clientes de criar perfis ou promover a própria role. Nunca adicione Admin SDK/service account ao frontend.
-
-## Modelo Firestore
-
-- `users/{uid}`: `displayName`, `email`, `role`, timestamps;
-- `characters/{characterId}`: `ownerId` (UID), `name`, campos opcionais, `carryingCapacity`, timestamps;
-- `items/{itemId}`: definição global com categoria, raridade, peso, empilhamento, slots e tags;
-- `characters/{characterId}/inventory/{inventoryItemId}`: referência `itemId`, quantidade, estado/slot de equipamento e timestamps.
-- `itemRequests/{requestId}`: solicitação do player, dados propostos, personagem, status e metadados da revisão do GM.
-
-Peso total, percentual e status são derivados no navegador, nunca persistidos. Itens equipados continuam no peso. O catálogo não é duplicado no inventário. Itens empilháveis usam um documento determinístico com ID igual ao `itemId`; entregas concorrentes usam transação e quantidade zero remove o documento. Ao excluir um personagem, o serviço apaga seu inventário em batches de até 450 operações antes do documento principal. Uma definição global só pode ser excluída quando uma consulta `collectionGroup` confirma que nenhum inventário ainda a referencia.
-
-## Permissões e regras
-
-`firestore.rules` permite catálogo para autenticados e escrita somente para admin. Player lê apenas seu perfil, personagens cujo `ownerId` é seu UID e respectivos inventários. Em inventário, player só altera `equipped`, `equipmentSlot` e `updatedAt`; as regras verificam `equippable` e compatibilidade no item global. Criação, quantidade, exclusão, personagens, catálogo e roles são administrativas.
-
-Publique regras e índices usando Firebase CLI autenticada no projeto existente:
+Para desenvolvimento:
 
 ```bash
-npx firebase-tools deploy --project telaprincipal-23a86 --only firestore:rules,firestore:indexes
+npm install
+cp .env.example .env.local
+npm run dev
 ```
 
-Alternativamente, cole `firestore.rules` na aba Rules do Firestore. A unicidade de slot é validada pela transação/UI, mas o Firestore Rules não consegue consultar atomicamente “qualquer documento em uma subcoleção”; para segurança absoluta contra clientes modificados numa futura escala, migre ocupação para documentos determinísticos `equipment/{slot}` ou uma Cloud Function. Compatibilidade e limites administrativos permanecem protegidos.
+---
 
-## Operação
+## 4. Estrutura principal
 
-O Project ID Firebase usado para publicação é `telaprincipal-23a86`. Após login, `/characters` consulta somente identidades autorizadas (admin vê todas). `/system/:id` apresenta busca, filtros, ordenações, detalhe, equipamento e carga em tempo real. `/admin` fornece CRUD de catálogo/personagens e entrega transacional de itens. Contas player não acessam a rota nem as operações pelas Rules.
+```text
+src/
+  components/     componentes de interface
+  config/         categorias, raridades, slots, tipos de skill etc.
+  features/       contexto de autenticação
+  hooks/          listeners React para Firestore
+  lib/            configuração Firebase
+  pages/          páginas principais
+  services/       leitura/escrita Firestore
+  types/          tipos TypeScript
+  utils/          regras e validações puras
+
+tests/
+  firestore.rules.test.ts
+
+firestore.rules
+firestore.indexes.json
+```
+
+### Princípio importante
+
+Lógica de banco deve ficar em `src/services`.
+
+Validação reutilizável deve ficar em `src/utils`.
+
+Listas centrais como slots, categorias e tipos devem ficar em `src/config`.
+
+Evite espalhar strings equivalentes pelo projeto.
+
+---
+
+## 5. Autenticação e roles
+
+Não existe cadastro público.
+
+As contas são criadas manualmente no Firebase Authentication.
+
+Cada usuário precisa também de:
+
+```text
+users/{uid}
+```
+
+Exemplo:
+
+```js
+{
+  displayName: "GM",
+  email: "gm@exemplo.com",
+  role: "admin",
+  createdAt: <timestamp>,
+  updatedAt: <timestamp>
+}
+```
+
+Roles válidas:
+
+```text
+admin
+player
+```
+
+Players não podem alterar a própria role pelas Rules.
+
+---
+
+## 6. Modelo Firestore
+
+### Usuários
+
+```text
+users/{uid}
+```
+
+Campos principais:
+
+- `displayName`;
+- `email`;
+- `role`;
+- timestamps.
+
+---
+
+### Personagens
+
+```text
+characters/{characterId}
+```
+
+Campos:
+
+- `ownerId` — UID do jogador;
+- `name`;
+- `nickname`;
+- `avatarUrl`;
+- `description`;
+- `carryingCapacity`;
+- timestamps.
+
+Um admin pode ver todos. Player vê apenas personagens cujo `ownerId` é o próprio UID.
+
+---
+
+### Catálogo global de itens
+
+```text
+items/{itemId}
+```
+
+Contém a definição do item:
+
+- nome;
+- descrição;
+- categoria;
+- peso;
+- imagem;
+- raridade;
+- empilhamento;
+- slots permitidos;
+- tags.
+
+A definição global não é duplicada dentro do inventário.
+
+---
+
+### Inventário
+
+```text
+characters/{characterId}/inventory/{inventoryItemId}
+```
+
+Campos principais:
+
+- `itemId`;
+- `quantity`;
+- `carried`;
+- `equipped`;
+- `equipmentSlot`;
+- timestamps.
+
+`carried: false` significa que o personagem possui o item, mas ele não conta no peso carregado.
+
+Um item fora da carga não pode permanecer equipado.
+
+O peso total é calculado no frontend e não é persistido.
+
+---
 
 ### Solicitações de itens
 
-Na HUD do próprio personagem, o player pode preencher **Enviar item para aprovação** e acompanhar nome, quantidade, data e status em **Minhas solicitações**. O `requestedBy` vem sempre da sessão Firebase e o `characterId` da HUD atual; as Rules também confirmam que o personagem pertence ao UID. Somente uma solicitação própria ainda pendente pode ser cancelada.
+```text
+itemRequests/{requestId}
+```
 
-Em `/admin`, a aba **Solicitações** mostra pendências primeiro e um badge com a quantidade pendente. O GM pode corrigir todos os dados, rejeitar com observação, excluir ou aprovar criando uma nova definição global ou vinculando uma já existente. A aprovação lê novamente o status e realiza catálogo, inventário e revisão na mesma transação, impedindo aprovação dupla. Pilhas usam o ID determinístico do item e respeitam `maxStack`; itens não empilháveis são criados como entradas unitárias. Players nunca escrevem em `/items` nem alteram quantidades de inventário.
+Fluxo:
 
-O formulário de revisão administrativa é controlado pelo componente pai. Portanto, ao clicar em **Aprovar**, as alterações atualmente visíveis são validadas e gravadas atomicamente junto da aprovação, mesmo que o GM não tenha usado antes **Salvar alterações**.
+```text
+Player envia
+    ↓
+pending
+    ↓
+GM revisa/edita
+    ↓
+approved ou rejected
+```
 
-`npm test` executa os testes unitários e, por meio do Firebase Emulator, os testes reais de `firestore.rules` em `tests/firestore.rules.test.ts`. É necessário ter Java disponível para iniciar o emulador.
+A aprovação pode:
 
-Categorias ficam em `src/config/itemCategories.ts`, raridades em `itemRarities.ts`, slots em `equipmentSlots.ts` e faixas de carga em `encumbrance.ts`. Para ampliar, adicione o valor ao tipo correspondente em `src/types/index.ts`, à configuração e à lista equivalente de `firestore.rules` quando aplicável.
+- criar um novo item global; ou
+- vincular um item já existente.
 
-## Cloudflare Pages
+A entrega e a revisão são protegidas por transação.
 
-1. Conecte este repositório em Workers & Pages → Create → Pages;
-2. use build command `npm run build`, diretório `dist` e uma versão atual do Node;
-3. cadastre as seis variáveis `VITE_FIREBASE_*` em Settings → Variables (produção e preview);
-4. inclua o domínio Pages em Firebase Authentication → Authorized domains;
-5. publique. `public/_redirects` produz o fallback SPA para URLs diretas como `/admin`.
+---
 
-Nenhum dado demo é inserido automaticamente. As únicas ações externas obrigatórias são preencher variáveis, criar usuários/perfis, publicar Rules e autorizar/conectar o domínio Cloudflare.
+## 7. Habilidades e técnicas
+
+As habilidades ficam **separadas do inventário** para facilitar manutenção e edição manual.
+
+### Habilidades oficiais
+
+```text
+skills/{skillId}
+```
+
+Campos:
+
+- `characterId`;
+- `ownerId`;
+- `name`;
+- `type`;
+- `description`;
+- `jetCost`;
+- `cooldown`;
+- `duration`;
+- `damage`;
+- `effect`;
+- `conditions`;
+- `imageUrl`;
+- `tags`;
+- `createdBy`;
+- `approvedBy`;
+- `approvedAt`;
+- timestamps.
+
+### Tipos de habilidade
+
+Definidos em:
+
+```text
+src/config/skillTypes.ts
+```
+
+Valores atuais:
+
+- Habilidade;
+- Técnica;
+- Passiva;
+- Ultimate;
+- Transformação;
+- Domínio;
+- Outra.
+
+### JET
+
+`jetCost` é um número e representa o custo de energia JET da habilidade.
+
+`cooldown`, `duration`, `damage`, `effect` e `conditions` são textos deliberadamente flexíveis. O sistema não tenta impor todas as regras de combate do RPG.
+
+Exemplos válidos:
+
+```text
+cooldown: "2 turnos"
+cooldown: "1 vez por combate"
+duration: "Enquanto mantiver concentração"
+damage: "3d20 + PRE"
+```
+
+---
+
+### Solicitações de habilidades
+
+```text
+skillRequests/{requestId}
+```
+
+Fluxo:
+
+```text
+Player preenche habilidade
+        ↓
+skillRequests / pending
+        ↓
+GM pode corrigir qualquer campo
+        ↓
+APROVAR
+        ↓
+cria skills/{skillId}
+        ↓
+request vira approved
+```
+
+Ou o GM pode rejeitar e deixar uma observação.
+
+O player pode excluir apenas uma solicitação própria enquanto ela ainda estiver `pending`.
+
+O player **não grava diretamente em `skills`**.
+
+---
+
+## 8. Recuperação manual pelo Firebase
+
+Esta parte é intencional.
+
+Se a interface apresentar algum problema, o proprietário do projeto pode abrir:
+
+Firebase Console → Firestore Database → Data
+
+e editar manualmente:
+
+```text
+characters
+items
+itemRequests
+skills
+skillRequests
+```
+
+Por exemplo, para corrigir rapidamente uma habilidade:
+
+```text
+skills
+  └── <skillId>
+       ├── name
+       ├── jetCost
+       ├── damage
+       ├── effect
+       └── conditions
+```
+
+O Firebase Console administrativo não depende da interface React.
+
+Por segurança, o frontend continua limitado pelas Firestore Rules.
+
+---
+
+## 9. Slots de equipamento
+
+Fonte central:
+
+```text
+src/config/equipmentSlots.ts
+```
+
+Slots atuais:
+
+- Cabeça;
+- Corpo;
+- Mãos;
+- Pernas;
+- Pés;
+- Mão principal;
+- Mão secundária;
+- Acessório 1;
+- Acessório 2;
+- Acessório 3;
+- Extra 1;
+- Extra 2.
+
+IDs internos:
+
+```text
+head
+chest
+hands
+legs
+feet
+mainHand
+offHand
+accessory1
+accessory2
+accessory3
+extra1
+extra2
+```
+
+Ao criar um novo slot é necessário atualizar:
+
+1. `src/types/index.ts`;
+2. `src/config/equipmentSlots.ts`;
+3. as listas correspondentes em `firestore.rules`;
+4. testes das Rules quando aplicável.
+
+---
+
+## 10. Categorias e raridades de itens
+
+Categorias:
+
+```text
+src/config/itemCategories.ts
+```
+
+Raridades:
+
+```text
+src/config/itemRarities.ts
+```
+
+Nunca adicionar apenas uma opção visual sem atualizar o tipo TypeScript e, quando necessário, as Firestore Rules.
+
+---
+
+## 11. HUD do player
+
+Rota:
+
+```text
+/system/:characterId
+```
+
+Mostra:
+
+- identidade;
+- capacidade de carga;
+- equipamento;
+- inventário;
+- busca/filtros;
+- modal de detalhes do item;
+- itens levados ou fora da carga;
+- habilidades/técnicas;
+- modal detalhado da habilidade;
+- solicitações de habilidades;
+- solicitações de itens.
+
+A interface de habilidades é somente uma ficha organizada. O sistema não tenta automatizar todo o combate.
+
+---
+
+## 12. Área administrativa
+
+Rota:
+
+```text
+/admin
+```
+
+O GM possui:
+
+### Catálogo
+
+CRUD de itens globais.
+
+### Personagens
+
+CRUD de personagens e gerenciamento do inventário.
+
+### Habilidades
+
+CRUD das habilidades oficiais em `skills`.
+
+### Solicitações
+
+Duas áreas:
+
+- solicitações de itens;
+- solicitações de habilidades.
+
+O contador de pendências soma os dois fluxos.
+
+---
+
+## 13. Segurança Firestore
+
+Arquivo fonte:
+
+```text
+firestore.rules
+```
+
+Regras principais:
+
+- somente autenticados acessam dados do app;
+- player lê somente seus personagens;
+- player lê apenas skills cujo `ownerId` é seu UID;
+- player não grava diretamente em `skills`;
+- player cria apenas `skillRequests` para personagem próprio;
+- player não pode se autoaprovar;
+- apenas admin revisa solicitações;
+- apenas admin altera catálogo, personagens, quantidades e skills oficiais;
+- player pode alterar estado de equipamento/carga apenas dentro das restrições;
+- qualquer acesso não explicitamente permitido termina no deny global.
+
+### Atenção
+
+Sempre que `firestore.rules` for alterado no GitHub, o merge **não publica automaticamente as Rules no Firebase**.
+
+É necessário publicar manualmente ou via CLI.
+
+---
+
+## 14. Publicar Rules
+
+Via Firebase Console:
+
+```text
+Firebase Console
+→ Firestore Database
+→ Rules
+→ copiar firestore.rules
+→ Publish
+```
+
+Ou pela CLI:
+
+```bash
+npx firebase-tools deploy   --project telaprincipal-23a86   --only firestore:rules,firestore:indexes
+```
+
+---
+
+## 15. Testes e validação
+
+Antes de mergear uma feature:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
+
+`npm test` executa:
+
+- testes unitários com Vitest;
+- testes reais das Firestore Rules usando Firebase Emulator.
+
+Java precisa estar disponível para o emulador Firestore.
+
+O CI do GitHub executa typecheck, lint, testes e build nos Pull Requests para `main`.
+
+---
+
+## 16. Deploy Cloudflare Pages
+
+Configuração:
+
+```text
+Build command: npm run build
+Output directory: dist
+Node: 22
+Production branch: main
+```
+
+Configure as seis variáveis `VITE_FIREBASE_*`.
+
+`public/_redirects` mantém o fallback SPA para rotas diretas.
+
+Após merge na `main`, o Cloudflare Pages normalmente cria novo deploy automaticamente.
+
+Alterações apenas de frontend não exigem republicar Firestore Rules.
+
+Alterações em `firestore.rules` exigem.
+
+---
+
+## 17. Regras de manutenção para futuros agentes / ChatGPT Work
+
+Antes de modificar o projeto:
+
+1. ler este README;
+2. buscar a versão atual da `main`;
+3. criar branch nova baseada na `main`;
+4. não trabalhar em branch antiga de outro PR;
+5. manter mudanças restritas à feature solicitada;
+6. abrir PR para `main`;
+7. aguardar CI;
+8. não fazer merge sem autorização do usuário;
+9. informar explicitamente quando novas Firestore Rules precisam ser publicadas.
+
+### Não quebrar estes fundamentos
+
+- Firestore continua sendo o único banco;
+- não usar Realtime Database;
+- não remover segurança das Rules para "fazer funcionar";
+- não permitir player escrever catálogo ou skill oficial;
+- não permitir auto-promoção para admin;
+- não armazenar peso total derivado;
+- não colocar segredos no repositório;
+- não substituir a estética atual por componentes genéricos sem necessidade.
+
+---
+
+## 18. Fluxo recomendado para novas features
+
+```text
+main atual
+   ↓
+branch de feature
+   ↓
+alterações pequenas e focadas
+   ↓
+PR
+   ↓
+CI verde
+   ↓
+merge autorizado pelo usuário
+   ↓
+Cloudflare deploy
+   ↓
+se Rules mudaram → publicar Firebase Rules
+```
+
+---
+
+## 19. Arquivos mais importantes para diagnóstico
+
+Se algo quebrar:
+
+### Inventário
+
+```text
+src/pages/SystemPage.tsx
+src/services/inventoryService.ts
+src/hooks/useInventory.ts
+src/utils/inventory.ts
+firestore.rules
+```
+
+### Itens
+
+```text
+src/services/itemService.ts
+src/services/itemRequestService.ts
+src/components/ItemRequestForm.tsx
+src/components/AdminItemRequests.tsx
+```
+
+### Habilidades
+
+```text
+src/components/CharacterSkills.tsx
+src/components/SkillForm.tsx
+src/components/PlayerSkillRequests.tsx
+src/components/AdminSkillRequests.tsx
+src/services/skillService.ts
+src/services/skillRequestService.ts
+src/hooks/useSkills.ts
+src/hooks/useSkillRequests.ts
+src/utils/skillRequest.ts
+src/config/skillTypes.ts
+```
+
+### Admin
+
+```text
+src/pages/AdminPage.tsx
+```
+
+### Firebase
+
+```text
+src/lib/firebase.ts
+firestore.rules
+firestore.indexes.json
+tests/firestore.rules.test.ts
+```
+
+---
+
+## 20. Resumo rápido para retomada futura
+
+Se você abriu este repositório sem contexto:
+
+> SISTEMA-INV é uma HUD React/TypeScript para RPG, hospedada no Cloudflare Pages e conectada ao Firebase Auth + Firestore. Players possuem personagens, inventário e habilidades. Catálogo e skills oficiais são controlados pelo GM. Players solicitam itens e habilidades por coleções intermediárias, e o GM aprova. O sistema evita Realtime Database. Firestore Rules são parte crítica da arquitetura e precisam ser publicadas manualmente após alterações. Sempre trabalhe a partir da `main` atual em uma branch nova e valide tudo pelo CI antes do merge.

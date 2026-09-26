@@ -1559,3 +1559,256 @@ dd {
 .inventory-admin button svg {
   width: 15px;
 }
+
+
+/* Skills & techniques */
+.skills-panel {
+  margin-top: 20px;
+}
+.skill-toolbar {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.skill-toolbar input,
+.skill-toolbar select {
+  min-height: 44px;
+  background: #040c14;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+}
+.skill-toolbar input {
+  flex: 1;
+}
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+.skill-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  background: rgba(4, 14, 23, 0.78);
+  border: 1px solid rgba(105, 218, 244, 0.16);
+  color: var(--text);
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    transform 0.2s,
+    background 0.2s;
+}
+.skill-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+  background: rgba(20, 67, 86, 0.2);
+}
+.skill-card-image {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #050e17;
+  border: 1px solid var(--border);
+  color: var(--cyan);
+}
+.skill-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.skill-card-image svg {
+  width: 30px;
+  height: 30px;
+}
+.skill-card > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.skill-card small {
+  color: var(--cyan);
+  font: 600 9px "Chakra Petch";
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.skill-card b {
+  overflow-wrap: anywhere;
+  font: 600 16px "Chakra Petch";
+}
+.skill-card span {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+.skill-card span svg {
+  width: 13px;
+  height: 13px;
+}
+.skill-detail-modal {
+  width: min(900px, calc(100vw - 40px));
+}
+.skill-detail {
+  display: grid;
+  gap: 18px;
+}
+.skill-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  gap: 20px;
+  align-items: center;
+}
+.skill-detail-image {
+  height: 260px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(85, 231, 255, 0.08), transparent 64%),
+    #050e17;
+  border: 1px solid var(--border);
+}
+.skill-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.skill-detail-image svg {
+  width: 58px;
+  height: 58px;
+  color: var(--cyan);
+}
+.skill-detail-hero h3 {
+  margin: 7px 0 10px;
+  font-size: clamp(27px, 4vw, 40px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.skill-detail-hero > div:last-child > p:last-child {
+  margin: 0;
+  color: #b4cbd4;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+.skill-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--border);
+}
+.skill-stats > div {
+  min-width: 0;
+  padding: 13px;
+  border-right: 1px solid rgba(105, 218, 244, 0.1);
+}
+.skill-stats > div:last-child {
+  border-right: 0;
+}
+.skill-stats dt {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.skill-stats dt svg {
+  width: 13px;
+  height: 13px;
+}
+.skill-stats dd {
+  overflow-wrap: anywhere;
+}
+.skill-copy {
+  padding: 14px;
+  background: rgba(3, 11, 18, 0.48);
+  border: 1px solid rgba(105, 218, 244, 0.12);
+}
+.skill-copy h4 {
+  margin: 0 0 8px;
+  color: var(--cyan);
+  font: 600 10px "Chakra Petch";
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.skill-copy p {
+  margin: 0;
+  color: #b4cbd4;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.skill-request-panel {
+  margin-top: 20px;
+}
+.request-groups {
+  display: grid;
+  gap: 18px;
+}
+.request-groups > section + section {
+  border-top: 1px solid var(--border);
+}
+.request-group-title {
+  margin: 0;
+  padding: 14px 18px;
+  color: var(--cyan);
+  background: rgba(85, 231, 255, 0.04);
+  border-bottom: 1px solid var(--border);
+  font: 600 10px "Chakra Petch";
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.skill-admin-editor {
+  display: grid;
+  gap: 14px;
+}
+
+@media (max-width: 800px) {
+  .skill-toolbar {
+    flex-direction: column;
+  }
+  .skill-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 9px;
+    gap: 8px;
+  }
+  .skill-card {
+    grid-template-columns: 1fr;
+  }
+  .skill-card-image {
+    width: 100%;
+    height: 120px;
+  }
+  .skill-detail-modal {
+    width: 100%;
+  }
+  .skill-detail-hero {
+    grid-template-columns: 1fr;
+  }
+  .skill-detail-image {
+    height: 220px;
+  }
+  .skill-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .skill-grid {
+    grid-template-columns: 1fr;
+  }
+  .skill-stats {
+    grid-template-columns: 1fr;
+  }
+  .skill-stats > div {
+    border-right: 0;
+    border-bottom: 1px solid rgba(105, 218, 244, 0.1);
+  }
+}
