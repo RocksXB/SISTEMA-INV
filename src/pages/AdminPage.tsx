@@ -5,6 +5,7 @@ import {
   MessageSquareText,
   PackagePlus,
   Search,
+  Sparkles,
   Trash2,
   Users,
 } from "lucide-react";
@@ -12,6 +13,7 @@ import { Link } from "react-router-dom";
 import { ITEM_CATEGORIES } from "../config/itemCategories";
 import { EQUIPMENT_SLOTS } from "../config/equipmentSlots";
 import { ITEM_RARITIES } from "../config/itemRarities";
+import { skillTypeLabel } from "../config/skillTypes";
 import { Modal, Empty, ErrorState, Loading, Panel } from "../components/Ui";
 import { useItems } from "../hooks/useItems";
 import {
@@ -20,6 +22,7 @@ import {
   deleteCharacter,
 } from "../services/characterService";
 import { deleteItem, saveItem } from "../services/itemService";
+import { deleteSkill, saveSkill } from "../services/skillService";
 import {
   deliverItem,
   removeInventoryItem,
@@ -27,13 +30,19 @@ import {
 } from "../services/inventoryService";
 import { useInventory } from "../hooks/useInventory";
 import { useAllItemRequests } from "../hooks/useItemRequests";
+import { useAllSkillRequests } from "../hooks/useSkillRequests";
+import { useAllSkills } from "../hooks/useSkills";
 import { AdminItemRequests } from "../components/AdminItemRequests";
+import { AdminSkillRequests } from "../components/AdminSkillRequests";
+import { EMPTY_SKILL_REQUEST, SkillForm } from "../components/SkillForm";
 import type {
   Character,
   EquipmentSlot,
   ItemCategory,
   ItemDefinition,
   ItemRarity,
+  SkillDefinition,
+  SkillRequestDraft,
 } from "../types";
 const blankItem: Omit<ItemDefinition, "id"> = {
   name: "",
@@ -56,14 +65,30 @@ const blankCharacter: Omit<Character, "id"> = {
   description: "",
   carryingCapacity: 70,
 };
+const skillToDraft = (skill: SkillDefinition): SkillRequestDraft => ({
+  name: skill.name,
+  type: skill.type,
+  description: skill.description,
+  jetCost: skill.jetCost,
+  cooldown: skill.cooldown,
+  duration: skill.duration,
+  damage: skill.damage,
+  effect: skill.effect,
+  conditions: skill.conditions,
+  imageUrl: skill.imageUrl ?? "",
+  tags: skill.tags,
+});
 export function AdminPage() {
   const { items, loading, error } = useItems();
   const requestState = useAllItemRequests();
+  const skillState = useAllSkills();
+  const skillRequestState = useAllSkillRequests();
   const [characters, setCharacters] = useState<Character[]>([]),
-    [tab, setTab] = useState<"items" | "characters" | "requests">("items"),
+    [tab, setTab] = useState<"items" | "characters" | "skills" | "requests">("items"),
     [query, setQuery] = useState(""),
     [itemEdit, setItemEdit] = useState<ItemDefinition | true | null>(null),
     [charEdit, setCharEdit] = useState<Character | true | null>(null),
+    [skillEdit, setSkillEdit] = useState<SkillDefinition | true | null>(null),
     [delivery, setDelivery] = useState<Character | null>(null),
     [message, setMessage] = useState("");
   const refresh = useCallback(() => {
@@ -83,10 +108,19 @@ export function AdminPage() {
       (x.name + x.nickname + x.ownerId)
         .toLowerCase()
         .includes(query.toLowerCase()),
+    ),
+    shownSkills = skillState.skills.filter((skill) =>
+      (
+        skill.name +
+        skill.type +
+        (characters.find((entry) => entry.id === skill.characterId)?.name ?? "")
+      )
+        .toLowerCase()
+        .includes(query.toLowerCase()),
     );
-  const pendingRequests = requestState.requests.filter(
-    (request) => request.status === "pending",
-  ).length;
+  const pendingRequests =
+    requestState.requests.filter((request) => request.status === "pending").length +
+    skillRequestState.requests.filter((request) => request.status === "pending").length;
   async function removeItem(i: ItemDefinition) {
     if (
       confirm(
@@ -116,6 +150,14 @@ export function AdminPage() {
         setMessage("Não foi possível excluir o personagem.");
       }
   }
+  async function removeSkillRecord(skill: SkillDefinition) {
+    if (!confirm(`Excluir a habilidade ${skill.name}?`)) return;
+    try {
+      await deleteSkill(skill.id);
+    } catch {
+      setMessage("Não foi possível excluir a habilidade.");
+    }
+  }
   return (
     <main className="page admin-page">
       <div className="page-heading">
@@ -136,6 +178,12 @@ export function AdminPage() {
           onClick={() => setTab("characters")}
         >
           <Users /> Personagens
+        </button>
+        <button
+          className={tab === "skills" ? "active" : ""}
+          onClick={() => setTab("skills")}
+        >
+          <Sparkles /> Habilidades
         </button>
         <button
           className={tab === "requests" ? "active" : ""}
@@ -159,7 +207,11 @@ export function AdminPage() {
             <button
               className="primary"
               onClick={() =>
-                tab === "items" ? setItemEdit(true) : setCharEdit(true)
+                tab === "items"
+                  ? setItemEdit(true)
+                  : tab === "characters"
+                    ? setCharEdit(true)
+                    : setSkillEdit(true)
               }
             >
               + NOVO REGISTRO
@@ -243,14 +295,65 @@ export function AdminPage() {
               ))
             )}
           </div>
+        ) : tab === "skills" ? (
+          <div className="data-list">
+            {skillState.loading ? (
+              <div className="request-loading">SINCRONIZANDO HABILIDADES...</div>
+            ) : !shownSkills.length ? (
+              <Empty text="NENHUMA HABILIDADE REGISTRADA" />
+            ) : (
+              shownSkills.map((skill) => (
+                <article key={skill.id}>
+                  <div>
+                    <b>{skill.name}</b>
+                    <span>
+                      {characters.find((entry) => entry.id === skill.characterId)?.name ??
+                        "PERSONAGEM INDISPONÍVEL"}{" // "}
+                      {skillTypeLabel(skill.type)}{" // "}
+                      {skill.jetCost} JET
+                    </span>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => setSkillEdit(skill)}
+                      aria-label={`Editar ${skill.name}`}
+                    >
+                      <Edit3 />
+                    </button>
+                    <button
+                      className="danger-icon"
+                      onClick={() => void removeSkillRecord(skill)}
+                      aria-label={`Excluir ${skill.name}`}
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
         ) : (
-          <AdminItemRequests
-            items={items}
-            characters={characters}
-            requests={requestState.requests}
-            loading={requestState.loading}
-            error={requestState.error}
-          />
+          <div className="request-groups">
+            <section>
+              <h3 className="request-group-title">Solicitações de itens</h3>
+              <AdminItemRequests
+                items={items}
+                characters={characters}
+                requests={requestState.requests}
+                loading={requestState.loading}
+                error={requestState.error}
+              />
+            </section>
+            <section>
+              <h3 className="request-group-title">Solicitações de habilidades</h3>
+              <AdminSkillRequests
+                characters={characters}
+                requests={skillRequestState.requests}
+                loading={skillRequestState.loading}
+                error={skillRequestState.error}
+              />
+            </section>
+          </div>
         )}
       </Panel>
       {itemEdit && (
@@ -260,6 +363,14 @@ export function AdminPage() {
           onSaved={() => setItemEdit(null)}
         />
       )}{" "}
+      {skillEdit && (
+        <SkillAdminForm
+          initial={skillEdit}
+          characters={characters}
+          onClose={() => setSkillEdit(null)}
+          onSaved={() => setSkillEdit(null)}
+        />
+      )}
       {charEdit && (
         <CharacterForm
           initial={charEdit === true ? blankCharacter : charEdit}
@@ -466,6 +577,80 @@ function ItemForm({
     </Modal>
   );
 }
+function SkillAdminForm({
+  initial,
+  characters,
+  onClose,
+  onSaved,
+}: {
+  initial: SkillDefinition | true;
+  characters: Character[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const existing = initial === true ? null : initial;
+  const [characterId, setCharacterId] = useState(
+    existing?.characterId ?? characters[0]?.id ?? "",
+  );
+  const [error, setError] = useState("");
+  const initialDraft = existing ? skillToDraft(existing) : EMPTY_SKILL_REQUEST;
+
+  async function submit(draft: SkillRequestDraft) {
+    const character = characters.find((entry) => entry.id === characterId);
+    if (!character) {
+      setError("Selecione um personagem válido.");
+      return;
+    }
+    try {
+      await saveSkill(
+        {
+          ...draft,
+          characterId,
+          ownerId: character.ownerId,
+        },
+        existing?.id,
+      );
+      onSaved();
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Falha ao salvar habilidade.";
+      setError(message);
+      throw caught;
+    }
+  }
+
+  return (
+    <Modal
+      title={existing ? "Editar habilidade" : "Nova habilidade"}
+      onClose={onClose}
+    >
+      <div className="skill-admin-editor">
+        <label className="request-existing">
+          Personagem
+          <select
+            required
+            value={characterId}
+            onChange={(event) => setCharacterId(event.target.value)}
+          >
+            <option value="">Selecione</option>
+            {characters.map((character) => (
+              <option key={character.id} value={character.id}>
+                {character.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error && <div className="form-error">{error}</div>}
+        <SkillForm
+          initial={initialDraft}
+          submitLabel="SALVAR HABILIDADE"
+          onSubmit={submit}
+        />
+      </div>
+    </Modal>
+  );
+}
+
 function CharacterForm({
   initial,
   onClose,
