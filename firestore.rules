@@ -91,7 +91,6 @@ service cloud.firestore {
     function validSkillDocument() {
       return request.resource.data.characterId is string
         && request.resource.data.ownerId is string
-        && request.resource.data.createdBy is string
         && get(/databases/$(database)/documents/characters/$(request.resource.data.characterId)).data.ownerId == request.resource.data.ownerId
         && validSkillFields(request.resource.data);
     }
