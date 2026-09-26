@@ -297,7 +297,9 @@ export function AdminPage() {
           </div>
         ) : tab === "skills" ? (
           <div className="data-list">
-            {skillState.loading ? (
+            {skillState.error ? (
+              <ErrorState text={skillState.error} />
+            ) : skillState.loading ? (
               <div className="request-loading">SINCRONIZANDO HABILIDADES...</div>
             ) : !shownSkills.length ? (
               <Empty text="NENHUMA HABILIDADE REGISTRADA" />
@@ -598,8 +600,9 @@ function SkillAdminForm({
   async function submit(draft: SkillRequestDraft) {
     const character = characters.find((entry) => entry.id === characterId);
     if (!character) {
-      setError("Selecione um personagem válido.");
-      return;
+      const failure = new Error("Selecione um personagem válido.");
+      setError(failure.message);
+      throw failure;
     }
     try {
       await saveSkill(
