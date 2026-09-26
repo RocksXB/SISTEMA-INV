@@ -13,7 +13,9 @@ import { ENCUMBRANCE_CONFIG } from "../config/encumbrance";
 import { ITEM_CATEGORIES, categoryLabel } from "../config/itemCategories";
 import { ITEM_RARITIES, rarityConfig } from "../config/itemRarities";
 import { InventoryCard } from "../components/InventoryCard";
+import { CharacterSkills } from "../components/CharacterSkills";
 import { PlayerItemRequests } from "../components/PlayerItemRequests";
+import { PlayerSkillRequests } from "../components/PlayerSkillRequests";
 import { Modal, Empty, ErrorState, Loading, Panel } from "../components/Ui";
 import {
   SystemNotification,
@@ -314,6 +316,22 @@ export function SystemPage() {
           </Panel>
         </section>
       </div>
+      {user && characterId && (
+        <CharacterSkills
+          characterId={characterId}
+          uid={user.uid}
+          isAdmin={profile?.role === "admin"}
+        />
+      )}
+      {profile?.role === "player" && user && characterId && (
+        <PlayerSkillRequests
+          characterId={characterId}
+          uid={user.uid}
+          onSuccess={(message) =>
+            setNotice({ title: "HABILIDADE REGISTRADA", message })
+          }
+        />
+      )}
       {profile?.role === "player" && user && characterId && (
         <PlayerItemRequests
           characterId={characterId}
