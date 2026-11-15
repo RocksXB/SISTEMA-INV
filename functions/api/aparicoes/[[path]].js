@@ -44,7 +44,7 @@ async function getRole(request) {
   const url = `${firestore}/users/${encodeURIComponent(uid)}?mask.fieldPaths=role`;
   const response = await fetch(url, {
     headers: {Authorization: `Bearer ${token}`},
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(8000),
   });
   if (response.status >= 500 || response.status === 429) throw Error("Firestore indisponível");
@@ -163,7 +163,7 @@ async function updateCard(request, bucket, id) {
 
   const url = `${firestore}/aparicaoEdits/${id}`;
   const headers = {Authorization:request.headers.get("Authorization"),"Content-Type":"application/json"};
-  const result = await fetch(url, {headers,signal:AbortSignal.timeout(8000)});
+  const result = await fetch(url, {headers,redirect:"manual",signal:AbortSignal.timeout(8000)});
   if (!result.ok && result.status !== 404) return rulesError(result.status);
   const stored = result.ok ? await result.json() : null;
   const revision = Number(stored?.fields?.revision?.integerValue ?? 0);
@@ -187,7 +187,7 @@ async function updateCard(request, bucket, id) {
   };
   const precondition = stored ? `currentDocument.updateTime=${encodeURIComponent(stored.updateTime)}` : "currentDocument.exists=false";
   const saved = await fetch(`${url}?${precondition}`, {
-    method:"PATCH",headers,signal:AbortSignal.timeout(8000),
+    method:"PATCH",headers,redirect:"manual",signal:AbortSignal.timeout(8000),
     body:JSON.stringify({fields:{
       revision:{integerValue:String(revision+1)},
       payload:{stringValue:JSON.stringify(next)},
