@@ -99,6 +99,22 @@ beforeEach(async () => {
   });
 });
 
+describe("aparicaoEdits Firestore Rules", () => {
+  it("permite ao GM salvar, aos jogadores ler e exige avanço de revisão", async () => {
+    const id = "1518668803343388682";
+    const admin = doc(environment.authenticatedContext("admin").firestore(), "aparicaoEdits", id);
+    const player = doc(environment.authenticatedContext("alice").firestore(), "aparicaoEdits", id);
+    const anonymous = doc(environment.unauthenticatedContext().firestore(), "aparicaoEdits", id);
+    const edit = { revision: 1, payload: '{"name":"Maxim"}' };
+    await assertFails(setDoc(player, edit));
+    await assertSucceeds(setDoc(admin, edit));
+    await assertSucceeds(getDoc(player));
+    await assertFails(getDoc(anonymous));
+    await assertFails(setDoc(admin, edit));
+    await assertSucceeds(setDoc(admin, { ...edit, revision: 2 }));
+  });
+});
+
 describe("itemRequests Firestore Rules", () => {
   it("permite criar solicitação própria pending", async () => {
     const db = environment.authenticatedContext("alice").firestore();

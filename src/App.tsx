@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Loading } from "./components/Ui";
@@ -7,6 +7,7 @@ import { AdminPage } from "./pages/AdminPage";
 import { CharactersPage } from "./pages/CharactersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SystemPage } from "./pages/SystemPage";
+const AparicoesPage = lazy(() => import("./pages/AparicoesPage"));
 function Private({
   admin = false,
   children,
@@ -41,6 +42,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/characters" replace />} />
         <Route path="/characters" element={<CharactersPage />} />
+        <Route path="/aparicoes" element={<Suspense fallback={<Loading />}><AparicoesPage /></Suspense>} />
         <Route path="/system/:characterId" element={<SystemPage />} />
         <Route
           path="/admin"

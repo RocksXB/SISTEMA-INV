@@ -1,9 +1,11 @@
-import { LogOut, Shield, UserRound } from "lucide-react";
-import { Link, Outlet } from "react-router-dom";
+import { LogOut, Shield, UserRound, UsersRound } from "lucide-react";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 import { logout } from "../services/authService";
+import { clearPortraitSession } from "../services/aparicoesService";
 export function Layout() {
   const { profile } = useAuth();
+  const signOut = () => void clearPortraitSession().catch(() => {}).then(logout);
   return (
     <>
       <header className="topbar">
@@ -15,6 +17,7 @@ export function Layout() {
           </div>
         </Link>
         <nav>
+          <NavLink to="/aparicoes" className="npc-nav"><UsersRound /> Personagens</NavLink>
           {profile?.role === "admin" && (
             <Link to="/admin">
               <Shield /> Controle
@@ -23,16 +26,17 @@ export function Layout() {
           <span>
             <UserRound /> {profile?.displayName || profile?.email}
           </span>
-          <button onClick={() => void logout()}>
+          <button onClick={signOut}>
             <LogOut /> Sair
           </button>
         </nav>
       </header>
       <Outlet />
       <footer className="mobile-nav">
-        <Link to="/characters">Personagens</Link>
+        <Link to="/characters">Inventário</Link>
+        <NavLink to="/aparicoes" className="npc-nav">Personagens</NavLink>
         {profile?.role === "admin" && <Link to="/admin">Controle</Link>}
-        <button onClick={() => void logout()}>Sair</button>
+        <button onClick={signOut}>Sair</button>
       </footer>
     </>
   );
