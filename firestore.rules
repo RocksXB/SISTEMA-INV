@@ -104,6 +104,18 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || admin());
       allow create, update, delete: if admin();
     }
+    match /aparicaoEdits/{npcId} {
+      function validEdit() {
+        return npcId.matches('^[0-9]{19}$')
+          && request.resource.data.keys().hasOnly(['revision', 'payload'])
+          && request.resource.data.revision is int
+          && request.resource.data.payload is string
+          && request.resource.data.payload.size() <= 70000;
+      }
+      allow read: if signedIn() && profile().data.role in ['admin', 'player'];
+      allow create: if admin() && validEdit() && request.resource.data.revision == 1;
+      allow update: if admin() && validEdit() && request.resource.data.revision == resource.data.revision + 1;
+    }
     match /items/{itemId} {
       allow read: if signedIn();
       allow write: if admin();

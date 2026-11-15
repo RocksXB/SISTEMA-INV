@@ -615,6 +615,19 @@ Alterações apenas de frontend não exigem republicar Firestore Rules.
 
 Alterações em `firestore.rules` exigem.
 
+### Catálogo de Aparições
+
+A aba **Personagens** abre `/aparicoes` para usuários com perfil. O GM pode editar
+os NPCs. As edições ficam em `aparicaoEdits/{npcId}`, no mesmo Firestore do
+inventário, e requerem a regra correspondente de `firestore.rules`.
+
+Vincule o bucket R2 privado `sistema-inv-aparicoes` ao Pages em produção com a
+variável `APARICOES_MEDIA`. Na raiz do bucket, `fichas.json` contém o catálogo
+original e cada retrato usa seu nome de objeto (por exemplo, `1518668803343388682.webp`).
+O catálogo e os retratos da campanha são carregados pelo R2 e ficam fora do repositório.
+Após configurar a binding, publique um novo deploy. As URLs importadas precisam
+apontar diretamente para imagens HTTPS que permitam a leitura pelo navegador.
+
 ---
 
 ## 17. Regras de manutenção para futuros agentes / ChatGPT Work
