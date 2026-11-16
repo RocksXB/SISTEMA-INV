@@ -632,6 +632,18 @@ Os envios do editor reservam espaço no R2 antes da gravação. O contador
 `_cota_retratos` começa com os objetos já existentes no bucket e limita os
 uploads do site a 3 GB. O editor oferece compressão automática ou envio do original.
 
+### Calendário da campanha
+
+O menu **Calendário** abre `/calendario`. A data compartilhada fica em
+`campaignCalendar/current` com o campo `date` em formato ISO. O GM altera
+esse mesmo documento e os jogadores acompanham a data. A campanha começou em
+`2227-07-11`. Publique a regra desse documento antes de usar a aba.
+
+As fichas calculam a idade a partir do aniversário e da data da campanha.
+Um ano de nascimento explícito tem prioridade. A data inicial serve de
+referência para idades das fichas antigas com dia e mês, enquanto novas
+idades registradas pelo GM usam a data da campanha no momento da edição.
+
 ---
 
 ## 17. Regras de manutenção para futuros agentes / ChatGPT Work

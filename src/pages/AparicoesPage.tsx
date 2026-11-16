@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, CircleMinus, Folder, FolderPlus, LayoutGrid, Search, Sparkles, UserPlus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Empty, ErrorState, Loading, Modal, Panel } from "../components/Ui";
 import { npcAccents } from "../config/npcAccents";
 import { useAuth } from "../features/auth/AuthContext";
 import { NpcEditor } from "../features/aparicoes/NpcEditor";
 import { isDivineTopic, npcCardStatus } from "../features/aparicoes/npcStatus";
+import { parseCampaignDate } from "../features/calendar/campaignDates";
+import { birthdayLabel, isAgeField, isBirthdayField, npcAgeLabel, npcBirthday } from "../features/calendar/npcBirthdays";
+import { useCampaignDate } from "../features/calendar/useCampaignDate";
 import {
   createNpcTopic, loadNpcs, newNpcId, normalizeNpcText, portraitSrc, refreshPortraitSession,
   type LoadedNpcs, type Npc, type NpcField, type NpcTopic,
@@ -12,7 +16,7 @@ import {
 import "../features/aparicoes/aparicoes.css";
 
 const pageSize = 24;
-const summaryFields = new Set(["idade", "altura", "organizacao"]);
+const summaryFields = new Set(["idade", "altura", "organizacao", "aniversario", "data de nascimento"]);
 const normalize = normalizeNpcText;
 
 function Facts({ fields, detail = false }: { fields: NpcField[]; detail?: boolean }) {
@@ -28,12 +32,27 @@ function Facts({ fields, detail = false }: { fields: NpcField[]; detail?: boolea
   );
 }
 
-function NpcCard({ npc, topic, onEdit }: { npc: Npc; topic: string; onEdit?: () => void }) {
+function NpcCard({ npc, topic, campaignDate, onEdit }: { npc: Npc; topic: string; campaignDate: string; onEdit?: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
   const status = npcCardStatus(npc.fields, topic);
+  const date = parseCampaignDate(campaignDate);
+  const age = date && npcAgeLabel(npc, date);
+  const birth = npcBirthday(npc.fields);
+  let hasAge = false;
+  const fields: NpcField[] = npc.fields.map(([label, value]) => {
+    if (age && !hasAge && isAgeField(label)) {
+      hasAge = true;
+      return [label, age];
+    }
+    return [label, value];
+  });
+  if (age && !hasAge) fields.push(["Idade", age]);
+  if (birth && !fields.some(([label, value]) => isBirthdayField(label) && value.trim())) {
+    fields.push(["Aniversário", birthdayLabel(birth)]);
+  }
   const [role, type] = ["funcao", "tipo"].map((key) =>
-    npc.fields.find(([label, value]) => normalize(label) === key && value));
-  const other = npc.fields.filter((field) => field !== role && field !== type && field[1]);
+    fields.find(([label, value]) => normalize(label) === key && value));
+  const other = fields.filter((field) => field !== role && field !== type && field[1]);
   const summary = other.filter(([label]) => summaryFields.has(normalize(label)));
   const details = other.filter(([label]) => !summaryFields.has(normalize(label)));
   return (
@@ -98,6 +117,9 @@ function NewTopic({ topics, onClose, onSave }: {
 
 export default function AparicoesPage() {
   const { user, profile } = useAuth();
+  const { date: campaignDate } = useCampaignDate();
+  const [parameters, setParameters] = useSearchParams();
+  const linkedNpc = parameters.get("personagem");
   const [catalog, setCatalog] = useState<LoadedNpcs>();
   const [error, setError] = useState("");
   const [topic, setTopic] = useState("");
@@ -142,7 +164,7 @@ export default function AparicoesPage() {
   })) || [], [catalog, topics]);
   const words = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matches = indexed.filter(({ npc, text }) =>
-    (!topic || npc.topicId === topic) && words.every((word) => text.includes(word)));
+    (!linkedNpc || npc.id === linkedNpc) && (!topic || npc.topicId === topic) && words.every((word) => text.includes(word)));
 
   if (!catalog && !error) return <Loading label="Carregando personagens…" />;
   const pageCount = Math.ceil(matches.length / pageSize);
@@ -150,7 +172,10 @@ export default function AparicoesPage() {
   const isAdmin = profile?.role === "admin";
   const canEdit = isAdmin && catalog?.editsAvailable;
   const canCreateTopic = isAdmin && catalog?.topicsAvailable;
-  const chooseTopic = (id: string) => { setTopic(id); setPage(0); };
+  const clearLinkedNpc = () => {
+    if (linkedNpc) setParameters((old) => { old.delete("personagem"); return old; }, { replace: true });
+  };
+  const chooseTopic = (id: string) => { clearLinkedNpc(); setTopic(id); setPage(0); };
   function startNpc() {
     setNotice("");
     setEditing({
@@ -197,19 +222,20 @@ export default function AparicoesPage() {
             <label className="search">
               <Search aria-hidden="true" />
               <input type="search" aria-label="Buscar fichas" placeholder="Buscar por nome, tipo ou organização" value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
+                onChange={(e) => { clearLinkedNpc(); setSearch(e.target.value); setPage(0); }} />
             </label>
             <select className="npc-mobile-topics" aria-label="Tópico" value={topic} onChange={(e) => chooseTopic(e.target.value)}>
               <option value="">Todos os tópicos</option>
               {catalog.topics.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
             </select>
+            {linkedNpc && <button type="button" className="secondary" onClick={clearLinkedNpc}>Ver todas as fichas</button>}
             {canCreateTopic && <button type="button" className="secondary npc-mobile-topics" onClick={() => { setNotice(""); setAddingTopic(true); }}>Novo tópico</button>}
             <span role="status">{matches.length} {matches.length === 1 ? "ficha" : "fichas"}</span>
           </div>
           {!matches.length ? <Empty text="Nenhuma ficha encontrada." /> : (
             <div className="npc-grid">
               {matches.slice(current * pageSize, (current + 1) * pageSize).map(({ npc }) => (
-                <NpcCard key={`${npc.id}:${npc.image}`} npc={npc} topic={topics.get(npc.topicId) || ""}
+                <NpcCard key={`${npc.id}:${npc.image}`} npc={npc} topic={topics.get(npc.topicId) || ""} campaignDate={campaignDate}
                   onEdit={canEdit ? () => setEditing({ npc, creating: false }) : undefined} />
               ))}
             </div>
@@ -234,7 +260,8 @@ export default function AparicoesPage() {
         }} />
       )}
       {editing && canEdit && user && catalog && (
-        <NpcEditor npc={editing.npc} creating={editing.creating} topics={catalog.topics} user={user} onClose={() => setEditing(undefined)} onSave={(updated) => {
+        <NpcEditor npc={editing.npc} creating={editing.creating} topics={catalog.topics} user={user}
+          campaignDate={campaignDate} onClose={() => setEditing(undefined)} onSave={(updated) => {
           setCatalog((previous) => previous && ({
             ...previous, records: editing.creating
               ? [updated, ...previous.records]

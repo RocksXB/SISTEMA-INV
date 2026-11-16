@@ -1,4 +1,4 @@
-import { LogOut, Shield, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, LogOut, Shield, UserRound, UsersRound } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 import { logout } from "../services/authService";
@@ -18,6 +18,7 @@ export function Layout() {
         </Link>
         <nav>
           <NavLink to="/aparicoes" className="npc-nav"><UsersRound /> Personagens</NavLink>
+          <NavLink to="/calendario" className="calendar-nav"><CalendarDays /> Calendário</NavLink>
           {profile?.role === "admin" && (
             <Link to="/admin">
               <Shield /> Controle
@@ -35,6 +36,7 @@ export function Layout() {
       <footer className="mobile-nav">
         <Link to="/characters">Inventário</Link>
         <NavLink to="/aparicoes" className="npc-nav">Personagens</NavLink>
+        <NavLink to="/calendario" className="calendar-nav">Calendário</NavLink>
         {profile?.role === "admin" && <Link to="/admin">Controle</Link>}
         <button onClick={signOut}>Sair</button>
       </footer>

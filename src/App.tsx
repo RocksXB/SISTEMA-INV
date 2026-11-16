@@ -8,6 +8,7 @@ import { CharactersPage } from "./pages/CharactersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SystemPage } from "./pages/SystemPage";
 const AparicoesPage = lazy(() => import("./pages/AparicoesPage"));
+const CampaignCalendarPage = lazy(() => import("./pages/CampaignCalendarPage"));
 function Private({
   admin = false,
   children,
@@ -43,6 +44,7 @@ export default function App() {
         <Route index element={<Navigate to="/characters" replace />} />
         <Route path="/characters" element={<CharactersPage />} />
         <Route path="/aparicoes" element={<Suspense fallback={<Loading />}><AparicoesPage /></Suspense>} />
+        <Route path="/calendario" element={<Suspense fallback={<Loading />}><CampaignCalendarPage /></Suspense>} />
         <Route path="/system/:characterId" element={<SystemPage />} />
         <Route
           path="/admin"

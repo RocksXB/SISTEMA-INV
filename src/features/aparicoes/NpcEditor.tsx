@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type FormEvent } from "react";
 import type { User } from "firebase/auth";
 import { ErrorState, Modal } from "../../components/Ui";
 import { npcAccents, type NpcAccent } from "../../config/npcAccents";
+import { ageText, birthdayLabel, birthText, isBirthdayField, npcBirthday, parseBirthday } from "../calendar/npcBirthdays";
 import { isStatusField, specialStatus, type NpcStatus } from "./npcStatus";
 import { prepareNpcPortrait, portraitSourceLimit } from "./portraitCompression";
 import {
@@ -11,18 +12,24 @@ import {
 
 type PhotoChoice = "manter" | "arquivo" | "link" | "original";
 
-export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
+export function NpcEditor({ npc, user, topics, creating, campaignDate, onClose, onSave }: {
   npc: Npc;
   user: User;
   topics: NpcTopic[];
   creating: boolean;
+  campaignDate: string;
   onClose: () => void;
   onSave: (npc: Npc) => void;
 }) {
   const [name, setName] = useState(npc.name);
   const [topic, setTopic] = useState(npc.topicId);
+  const [birthday, setBirthday] = useState(birthText(npc.fields));
+  const [birthdayChanged, setBirthdayChanged] = useState(false);
   const [accent, setAccent] = useState<NpcAccent>(npc.accent || "cyan");
-  const [fields, setFields] = useState(npc.fields.map(([label, value], key) => ({ key, label, value })));
+  const storedBirthdays = npc.fields.filter(([label]) => isBirthdayField(label));
+  const inferredBirthday = !birthText(npc.fields) && npcBirthday(npc.fields);
+  const [fields, setFields] = useState(() => npc.fields
+    .filter(([label]) => !isBirthdayField(label)).map(([label, value], key) => ({ key, label, value })));
   const [nextKey, setNextKey] = useState(fields.length);
   const [choice, setChoice] = useState<PhotoChoice>("manter");
   const [file, setFile] = useState<File>();
@@ -30,6 +37,7 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
   const [compress, setCompress] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const fieldCount = fields.length + (birthdayChanged ? Number(!!birthday.trim()) : storedBirthdays.length);
   const originalPicture = npc.originalImage || (npc.revision == null ? npc.image : undefined);
   const picture = choice === "original" ? originalPicture : npc.image;
   const statusRows = fields.filter((row) => isStatusField(row.label));
@@ -47,7 +55,7 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
       setFields((old) => old.flatMap((row) => row.key === current.key
         ? [{ ...row, value: specialStatus(row.value) === status ? row.value : value }]
         : isStatusField(row.label) && specialStatus(row.value) ? [] : [row]));
-    } else if (fields.length < 32) {
+    } else if (fieldCount < 32) {
       setFields((old) => [...old, { key: nextKey, label: "Status", value }]);
       setNextKey(nextKey + 1);
     }
@@ -68,9 +76,24 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    const trimmed: NpcField[] = fields.map(({ label, value }) => [label.trim(), value.trim()]);
+    let trimmed: NpcField[] = fields.map(({ label, value }) => [label.trim(), value.trim()]);
     if (!name.trim() || (creating && !topic) || trimmed.some(([label]) => !label)) {
       setError("Preencha o nome do personagem, o tópico e o nome de cada campo.");
+      return;
+    }
+    if (birthdayChanged) {
+      const parsed = parseBirthday(birthday);
+      if (birthday.trim() && !parsed) {
+        setError("Informe um aniversário válido no formato DD/MM ou DD/MM/AAAA.");
+        return;
+      }
+      trimmed = trimmed.filter(([label]) => !isBirthdayField(label));
+      if (parsed) trimmed.push(["Aniversário", birthdayLabel(parsed)]);
+    } else {
+      trimmed.push(...storedBirthdays);
+    }
+    if (trimmed.length > 32) {
+      setError("Remova um campo antes de adicionar o aniversário.");
       return;
     }
     setBusy(true);
@@ -83,6 +106,7 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
       const photo = source ? await prepareNpcPortrait(source, compress) : undefined;
       const edit = {
         name: name.trim(), accent, fields: trimmed,
+        ageReferenceDate: creating || ageText(trimmed) !== ageText(npc.fields) ? campaignDate : npc.ageReferenceDate,
         imageAction: photo ? "trocar" : choice === "original" ? "original" : "manter",
       } as const;
       onSave(creating ? await addNpc(user, npc.id, topic, edit, photo) : await saveNpc(user, npc, edit, photo));
@@ -107,11 +131,16 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
                 </select>
               </label>}
             </div>
+            <label>Aniversário
+              <input value={birthday} onChange={(event) => { setBirthday(event.target.value); setBirthdayChanged(true); }}
+                maxLength={10} placeholder="DD/MM ou DD/MM/AAAA" autoComplete="off" />
+              {inferredBirthday && <small>Data registrada na idade: {birthdayLabel(inferredBirthday)}.</small>}
+            </label>
             <label className="npc-status-setting">Status
               <select value={selectedStatus || ""} onChange={(event) => setStatus(event.target.value as "" | NpcStatus)}>
                 <option value="">Padrão do tópico</option>
-                <option value="morto" disabled={!statusRows.length && fields.length >= 32}>Morto</option>
-                <option value="divindade" disabled={!statusRows.length && fields.length >= 32}>Divindade</option>
+                <option value="morto" disabled={!statusRows.length && fieldCount >= 32}>Morto</option>
+                <option value="divindade" disabled={!statusRows.length && fieldCount >= 32}>Divindade</option>
               </select>
             </label>
             <fieldset className="npc-palette">
@@ -155,7 +184,7 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
             </div>
             <div className="npc-fields-title">
               <h3>Campos da ficha</h3>
-              <button type="button" className="secondary" disabled={fields.length >= 32} onClick={() => {
+              <button type="button" className="secondary" disabled={fieldCount >= 32} onClick={() => {
                 setFields([...fields, { key: nextKey, label: "", value: "" }]);
                 setNextKey(nextKey + 1);
               }}>Adicionar campo</button>

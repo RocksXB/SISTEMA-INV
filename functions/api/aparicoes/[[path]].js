@@ -1,4 +1,5 @@
 import { isNpcAccent } from "../../../src/config/npcAccents.ts";
+import { parseCampaignDate } from "../../../src/features/calendar/campaignDates.ts";
 import { removeTrackedPortrait, reservePortraitBytes } from "../../../src/server/aparicoesQuota.js";
 
 const projectId = "telaprincipal-23a86";
@@ -133,6 +134,7 @@ async function readEdit(request) {
     const file = form.get("retrato");
     if (!edit || typeof edit.name !== "string" || !edit.name.trim() || edit.name.length > 150 ||
       !isNpcAccent(edit.accent) || !Number.isSafeInteger(edit.revision) || edit.revision < 0 ||
+      (edit.ageReferenceDate !== undefined && !parseCampaignDate(edit.ageReferenceDate)) ||
       !["manter","original","trocar"].includes(edit.imageAction) ||
       !Array.isArray(edit.fields) || edit.fields.length > 32 ||
       edit.fields.some((pair) => !Array.isArray(pair) || pair.length !== 2 ||
@@ -205,6 +207,7 @@ async function updateCard(request, bucket, id) {
   const next = {
     name:edit.name.trim(),
     topicId,
+    ageReferenceDate:edit.ageReferenceDate ?? previous?.ageReferenceDate,
     fields:edit.fields.map(([label,value]) => [label.trim(),value.trim()]),
     accent:edit.accent,
     image:uploaded ?? (edit.imageAction === "original" ? baseline?.image : previous?.image),
