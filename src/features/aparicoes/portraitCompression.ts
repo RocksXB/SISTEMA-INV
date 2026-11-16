@@ -44,7 +44,7 @@ export async function prepareNpcPortrait(source: Blob, compress: boolean): Promi
     if (!context) throw Error("A compressão não está disponível neste navegador.");
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const encoded = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.84));
-    if (encoded && encoded.size <= maxNpcPortrait && (ratio < 1 || encoded.size < source.size)) return encoded;
+    if (encoded && encoded.size <= maxNpcPortrait && encoded.size < source.size) return encoded;
     if (source.size <= maxNpcPortrait) return source;
     throw Error("A imagem comprimida ultrapassou 8 MB.");
   } finally {

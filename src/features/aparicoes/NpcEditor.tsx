@@ -148,7 +148,7 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
                     </select>
                   </label>
                   <small>{compress
-                    ? "Imagem de até 24 MB. Reduz para até 960 px. As animações ficam no formato original."
+                    ? "Imagem de até 24 MB. Tenta reduzir para até 960 px. As animações ficam no formato original."
                     : "JPG, PNG, WebP ou GIF. Original de até 8 MB."}</small>
                 </>}
               </div>

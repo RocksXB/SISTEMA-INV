@@ -16,7 +16,7 @@ it("envia o original intacto quando escolhido e preserva GIF e WebP animado", as
 });
 
 it("redimensiona a imagem estática e retorna o WebP comprimido", async () => {
-  const source = new Blob(["foto"], { type: "image/jpeg" });
+  const source = new Blob(["foto original em alta resolução"], { type: "image/jpeg" });
   const encoded = new Blob(["foto comprimida"], { type: "image/webp" });
   const drawImage = vi.fn();
   const bitmap = { width: 1000, height: 2000, close: vi.fn() };
@@ -27,4 +27,6 @@ it("redimensiona a imagem estática e retorna o WebP comprimido", async () => {
   await expect(prepareNpcPortrait(source, true)).resolves.toBe(encoded);
   expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0, 480, 960);
   expect(bitmap.close).toHaveBeenCalledOnce();
+  const smaller = new Blob(["foto"], { type: "image/jpeg" });
+  await expect(prepareNpcPortrait(smaller, true)).resolves.toBe(smaller);
 });
