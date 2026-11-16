@@ -99,6 +99,22 @@ beforeEach(async () => {
   });
 });
 
+describe("aparicaoTopics Firestore Rules", () => {
+  it("permite somente ao GM criar tópicos e mantém a leitura restrita a perfis cadastrados", async () => {
+    const id = "t-" + "a".repeat(64);
+    const admin = environment.authenticatedContext("admin").firestore();
+    const player = environment.authenticatedContext("alice").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const path = `aparicaoTopics/${id}`;
+    await assertFails(setDoc(doc(player, path), { title: "Arquivo" }));
+    await assertFails(setDoc(doc(admin, path), { title: "" }));
+    await assertSucceeds(setDoc(doc(admin, path), { title: "Arquivo" }));
+    await assertSucceeds(getDoc(doc(player, path)));
+    await assertFails(getDoc(doc(anonymous, path)));
+    await assertFails(setDoc(doc(admin, path), { title: "Outra pasta" }));
+  });
+});
+
 describe("aparicaoEdits Firestore Rules", () => {
   it("permite ao GM salvar, aos jogadores ler e exige avanço de revisão", async () => {
     const id = "1518668803343388682";

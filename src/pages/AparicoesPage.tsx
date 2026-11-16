@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Empty, ErrorState, Loading, Panel } from "../components/Ui";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { ChevronLeft, ChevronRight, Folder, FolderPlus, LayoutGrid, Search, UserPlus } from "lucide-react";
+import { Empty, ErrorState, Loading, Modal, Panel } from "../components/Ui";
+import { npcAccents } from "../config/npcAccents";
 import { useAuth } from "../features/auth/AuthContext";
 import { NpcEditor } from "../features/aparicoes/NpcEditor";
 import {
-  loadNpcs, portraitSrc, refreshPortraitSession, type Npc, type NpcCatalog, type NpcField,
+  createNpcTopic, loadNpcs, newNpcId, normalizeNpcText, portraitSrc, refreshPortraitSession,
+  type LoadedNpcs, type Npc, type NpcField, type NpcTopic,
 } from "../services/aparicoesService";
 import "../features/aparicoes/aparicoes.css";
 
 const pageSize = 24;
 const summaryFields = new Set(["idade", "altura", "organizacao"]);
-const normalize = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+const normalize = normalizeNpcText;
 
 function Facts({ fields, detail = false }: { fields: NpcField[]; detail?: boolean }) {
   if (!fields.length) return null;
@@ -33,7 +35,7 @@ function NpcCard({ npc, topic, onEdit }: { npc: Npc; topic: string; onEdit?: () 
   const summary = other.filter(([label]) => summaryFields.has(normalize(label)));
   const details = other.filter(([label]) => !summaryFields.has(normalize(label)));
   return (
-    <article className="npc-card" data-accent={npc.accent || "cyan"}>
+    <article className="npc-card" style={{ "--accent": npcAccents[npc.accent || "cyan"][1] } as CSSProperties}>
       <header className="npc-card-head">
         <div className="npc-portrait">
           <span aria-hidden="true">{npc.name.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}</span>
@@ -53,14 +55,52 @@ function NpcCard({ npc, topic, onEdit }: { npc: Npc; topic: string; onEdit?: () 
   );
 }
 
+function NewTopic({ topics, onClose, onSave }: {
+  topics: NpcTopic[];
+  onClose: () => void;
+  onSave: (topic: NpcTopic) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      onSave(await createNpcTopic(title, topics));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível criar o tópico.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Novo tópico" className="npc-topic-editor" onClose={() => { if (!busy) onClose(); }}>
+      <form onSubmit={save}>
+        <label>Nome do tópico
+          <input value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={60} disabled={busy} />
+        </label>
+        {error && <ErrorState text={error} />}
+        <button type="submit" className="primary" disabled={busy}>{busy ? "Criando…" : "Criar tópico"}</button>
+      </form>
+    </Modal>
+  );
+}
+
 export default function AparicoesPage() {
   const { user, profile } = useAuth();
-  const [catalog, setCatalog] = useState<NpcCatalog & { editsAvailable: boolean }>();
+  const [catalog, setCatalog] = useState<LoadedNpcs>();
   const [error, setError] = useState("");
   const [topic, setTopic] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [editing, setEditing] = useState<Npc>();
+  const [editing, setEditing] = useState<{ npc: Npc; creating: boolean }>();
+  const [addingTopic, setAddingTopic] = useState(false);
+  const [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
@@ -86,6 +126,11 @@ export default function AparicoesPage() {
   }, [user, retry]);
 
   const topics = useMemo(() => new Map(catalog?.topics.map(({ id, title }) => [id, title])), [catalog]);
+  const topicCounts = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const npc of catalog?.records || []) totals.set(npc.topicId, (totals.get(npc.topicId) || 0) + 1);
+    return totals;
+  }, [catalog]);
   const indexed = useMemo(() => catalog?.records.map((npc) => ({
     npc,
     text: normalize([npc.name, topics.get(npc.topicId), ...npc.fields.flat()].join(" ")),
@@ -98,19 +143,48 @@ export default function AparicoesPage() {
   const pageCount = Math.ceil(matches.length / pageSize);
   const current = Math.min(page, Math.max(0, pageCount - 1));
   const isAdmin = profile?.role === "admin";
+  const canEdit = isAdmin && catalog?.editsAvailable;
+  const canCreateTopic = isAdmin && catalog?.topicsAvailable;
+  const chooseTopic = (id: string) => { setTopic(id); setPage(0); };
+  function startNpc() {
+    setNotice("");
+    setEditing({
+      creating: true,
+      npc: { id: newNpcId(), topicId: topic, name: "", fields: [
+        ["Função", ""], ["Tipo", ""], ["Idade", ""], ["Altura", ""], ["Organização", ""],
+      ] },
+    });
+  }
   return (
     <main className="page npc-page">
-      <div className="page-heading">
-        <h1>Personagens</h1>
-        <p>Fichas dos NPCs de Aparições</p>
-      </div>
-      {(error || catalog?.editsAvailable === false) && (
+      <header className="page-heading npc-page-header">
+        <div><h1>Personagens</h1><p>Fichas dos NPCs de Aparições</p></div>
+        {canEdit && <button type="button" className="primary npc-create" onClick={startNpc}><UserPlus aria-hidden="true" /> Novo personagem</button>}
+      </header>
+      {notice && <p className="npc-notice" role="status">{notice}</p>}
+      {(error || catalog?.editsAvailable === false || catalog?.topicsAvailable === false) && (
         <div className="npc-retry">
-          <ErrorState text={error || "As edições estão indisponíveis. Exibindo as fichas originais."} />
+          <ErrorState text={error || (catalog?.editsAvailable === false
+            ? "As edições estão indisponíveis. Exibindo as fichas originais."
+            : "Os tópicos personalizados estão temporariamente indisponíveis.")} />
           <button type="button" className="secondary" onClick={() => { setError(""); setRetry((old) => old + 1); }}>Tentar de novo</button>
         </div>
       )}
       {catalog && (
+        <div className="npc-catalogue">
+        <aside className="panel npc-topics" aria-labelledby="npc-topics-title">
+          <h2 className="panel-title" id="npc-topics-title"><span aria-hidden="true" /> Tópicos</h2>
+          <nav className="npc-topic-list" aria-label="Tópicos de Aparições">
+            {[{ id: "", title: "Todos os tópicos" }, ...catalog.topics].map(({ id, title }) => {
+              const Icon = id ? Folder : LayoutGrid;
+              return <button key={id} type="button" aria-pressed={topic === id} onClick={() => chooseTopic(id)}>
+                <Icon aria-hidden="true" /><span>{title}</span>
+                <small>{id ? topicCounts.get(id) || 0 : catalog.records.length}</small>
+              </button>;
+            })}
+          </nav>
+          {canCreateTopic && <button type="button" className="npc-new-topic" onClick={() => { setNotice(""); setAddingTopic(true); }}><FolderPlus aria-hidden="true" /> Novo tópico</button>}
+        </aside>
         <Panel className="npc-results" title={topics.get(topic) || "Todos os tópicos"}>
           <div className="filters npc-filters">
             <label className="search">
@@ -118,17 +192,18 @@ export default function AparicoesPage() {
               <input type="search" aria-label="Buscar fichas" placeholder="Buscar por nome, tipo ou organização" value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
             </label>
-            <select aria-label="Tópico" value={topic} onChange={(e) => { setTopic(e.target.value); setPage(0); }}>
+            <select className="npc-mobile-topics" aria-label="Tópico" value={topic} onChange={(e) => chooseTopic(e.target.value)}>
               <option value="">Todos os tópicos</option>
               {catalog.topics.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
             </select>
+            {canCreateTopic && <button type="button" className="secondary npc-mobile-topics" onClick={() => { setNotice(""); setAddingTopic(true); }}>Novo tópico</button>}
             <span role="status">{matches.length} {matches.length === 1 ? "ficha" : "fichas"}</span>
           </div>
           {!matches.length ? <Empty text="Nenhuma ficha encontrada." /> : (
             <div className="npc-grid">
               {matches.slice(current * pageSize, (current + 1) * pageSize).map(({ npc }) => (
                 <NpcCard key={`${npc.id}:${npc.image}`} npc={npc} topic={topics.get(npc.topicId) || ""}
-                  onEdit={isAdmin && catalog.editsAvailable ? () => setEditing(npc) : undefined} />
+                  onEdit={canEdit ? () => setEditing({ npc, creating: false }) : undefined} />
               ))}
             </div>
           )}
@@ -140,12 +215,29 @@ export default function AparicoesPage() {
             </nav>
           )}
         </Panel>
+        </div>
       )}
-      {editing && isAdmin && user && (
-        <NpcEditor npc={editing} user={user} onClose={() => setEditing(undefined)} onSave={(updated) => {
+      {addingTopic && canCreateTopic && catalog && (
+        <NewTopic topics={catalog.topics} onClose={() => setAddingTopic(false)} onSave={(created) => {
+          setCatalog((previous) => previous && ({ ...previous, topics: [...previous.topics, created] }));
+          setAddingTopic(false);
+          setSearch("");
+          chooseTopic(created.id);
+          setNotice("Tópico criado.");
+        }} />
+      )}
+      {editing && canEdit && user && catalog && (
+        <NpcEditor npc={editing.npc} creating={editing.creating} topics={catalog.topics} user={user} onClose={() => setEditing(undefined)} onSave={(updated) => {
           setCatalog((previous) => previous && ({
-            ...previous, records: previous.records.map((entry) => entry.id === updated.id ? updated : entry),
+            ...previous, records: editing.creating
+              ? [updated, ...previous.records]
+              : previous.records.map((entry) => entry.id === updated.id ? updated : entry),
           }));
+          if (editing.creating) {
+            setSearch("");
+            chooseTopic(updated.topicId);
+            setNotice("Personagem adicionado.");
+          }
           setEditing(undefined);
         }} />
       )}

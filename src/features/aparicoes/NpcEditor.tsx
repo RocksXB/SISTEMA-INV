@@ -1,21 +1,24 @@
-import { useState, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
 import type { User } from "firebase/auth";
 import { ErrorState, Modal } from "../../components/Ui";
+import { npcAccents, type NpcAccent } from "../../config/npcAccents";
 import {
-  fetchNpcImage, maxNpcPortrait, npcAccents, portraitSrc, saveNpc,
-  type Npc, type NpcAccent, type NpcField,
+  addNpc, fetchNpcImage, maxNpcPortrait, portraitSrc, saveNpc,
+  type Npc, type NpcField, type NpcTopic,
 } from "../../services/aparicoesService";
 
-const colors = ["Ciano", "Violeta", "Âmbar", "Verde", "Rosa"];
 type PhotoChoice = "manter" | "arquivo" | "link" | "original";
 
-export function NpcEditor({ npc, user, onClose, onSave }: {
+export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
   npc: Npc;
   user: User;
+  topics: NpcTopic[];
+  creating: boolean;
   onClose: () => void;
   onSave: (npc: Npc) => void;
 }) {
   const [name, setName] = useState(npc.name);
+  const [topic, setTopic] = useState(npc.topicId);
   const [accent, setAccent] = useState<NpcAccent>(npc.accent || "cyan");
   const [fields, setFields] = useState(npc.fields.map(([label, value], key) => ({ key, label, value })));
   const [nextKey, setNextKey] = useState(fields.length);
@@ -24,7 +27,8 @@ export function NpcEditor({ npc, user, onClose, onSave }: {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const picture = choice === "original" ? npc.originalImage || npc.image : npc.image;
+  const originalPicture = npc.originalImage || (npc.revision == null ? npc.image : undefined);
+  const picture = choice === "original" ? originalPicture : npc.image;
 
   function changeField(key: number, property: "label" | "value", text: string) {
     setFields((old) => old.map((row) => row.key === key ? { ...row, [property]: text } : row));
@@ -42,8 +46,8 @@ export function NpcEditor({ npc, user, onClose, onSave }: {
     event.preventDefault();
     if (busy) return;
     const trimmed: NpcField[] = fields.map(({ label, value }) => [label.trim(), value.trim()]);
-    if (!name.trim() || trimmed.some(([label]) => !label)) {
-      setError("Preencha o nome do personagem e de cada campo.");
+    if (!name.trim() || (creating && !topic) || trimmed.some(([label]) => !label)) {
+      setError("Preencha o nome do personagem, o tópico e o nome de cada campo.");
       return;
     }
     setBusy(true);
@@ -53,10 +57,11 @@ export function NpcEditor({ npc, user, onClose, onSave }: {
       if ((choice === "arquivo" || choice === "link") && (!photo?.size || photo.size > maxNpcPortrait)) {
         throw new Error("Selecione uma imagem de até 8 MB.");
       }
-      onSave(await saveNpc(user, npc, {
+      const edit = {
         name: name.trim(), accent, fields: trimmed,
         imageAction: photo ? "trocar" : choice === "original" ? "original" : "manter",
-      }, photo));
+      } as const;
+      onSave(creating ? await addNpc(user, npc.id, topic, edit, photo) : await saveNpc(user, npc, edit, photo));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível salvar a ficha.");
     } finally {
@@ -65,27 +70,41 @@ export function NpcEditor({ npc, user, onClose, onSave }: {
   }
 
   return (
-    <Modal title="Editar ficha" className="npc-editor" onClose={() => { if (!busy) onClose(); }}>
+    <Modal title={creating ? "Novo personagem" : "Editar ficha"} className="npc-editor" onClose={() => { if (!busy) onClose(); }}>
       <form onSubmit={save}>
         <div className="npc-editor-body">
           <fieldset disabled={busy}>
             <div className="npc-edit-settings">
               <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} required maxLength={150} /></label>
-              <label>Cor de destaque
-                <select value={accent} onChange={(e) => setAccent(e.target.value as NpcAccent)}>
-                  {npcAccents.map((color, index) => <option key={color} value={color}>{colors[index]}</option>)}
+              {creating && <label>Tópico
+                <select required value={topic} onChange={(e) => setTopic(e.target.value)}>
+                  <option value="" disabled>Selecione um tópico</option>
+                  {topics.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
                 </select>
-              </label>
+              </label>}
             </div>
+            <fieldset className="npc-palette">
+              <legend>Cor de destaque <span>{npcAccents[accent][0]}</span></legend>
+              <div className="npc-swatches">
+                {(Object.keys(npcAccents) as NpcAccent[]).map((color) => {
+                  const [label, swatch] = npcAccents[color];
+                  return <label key={color} title={label} style={{ "--swatch": swatch } as CSSProperties}>
+                    <input type="radio" name="npc-accent" value={color} checked={color === accent} aria-label={label}
+                      onChange={() => setAccent(color)} />
+                    <span aria-hidden="true" />
+                  </label>;
+                })}
+              </div>
+            </fieldset>
             <div className="npc-edit-photo">
               {picture && <img src={portraitSrc(picture)} alt="" />}
               <div>
                 <label>Retrato
                   <select value={choice} onChange={(e) => setChoice(e.target.value as PhotoChoice)}>
-                    <option value="manter">Manter retrato atual</option>
+                    <option value="manter">{creating ? "Sem retrato por enquanto" : "Manter retrato atual"}</option>
                     <option value="arquivo">Enviar arquivo do computador</option>
                     <option value="link">Importar imagem de link</option>
-                    <option value="original">Usar retrato original</option>
+                    {originalPicture && <option value="original">Usar retrato original</option>}
                   </select>
                 </label>
                 {choice === "arquivo" && <label>Arquivo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" required onChange={(e) => setFile(e.target.files?.[0])} /></label>}
@@ -119,7 +138,9 @@ export function NpcEditor({ npc, user, onClose, onSave }: {
         </div>
         <footer>
           {error && <ErrorState text={error} />}
-          <button type="submit" className="primary" disabled={busy}>{busy ? "Salvando…" : "Salvar ficha"}</button>
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? "Salvando…" : creating ? "Adicionar personagem" : "Salvar ficha"}
+          </button>
         </footer>
       </form>
     </Modal>

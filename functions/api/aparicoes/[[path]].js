@@ -1,3 +1,5 @@
+import { isNpcAccent } from "../../../src/config/npcAccents.ts";
+
 const projectId = "telaprincipal-23a86";
 const firestore = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
 const bucketKey = "fichas.json";
@@ -6,7 +8,7 @@ const mediaCookie = "__Secure-aparicoes-retratos";
 const sessionSeconds = 30 * 60;
 const maxImage = 8 * 1024 * 1024;
 const imageKey = /^\d{19}(?:-[a-f\d-]{36})?\.(?:webp|jpg|png|gif)$/;
-const accents = new Set(["cyan", "violet", "amber", "green", "rose"]);
+const customTopicId = /^t-[0-9a-f]{64}$/;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let mediaSigningKey;
@@ -129,7 +131,7 @@ async function readEdit(request) {
     const edit = JSON.parse(raw);
     const file = form.get("retrato");
     if (!edit || typeof edit.name !== "string" || !edit.name.trim() || edit.name.length > 150 ||
-      !accents.has(edit.accent) || !Number.isSafeInteger(edit.revision) || edit.revision < 0 ||
+      !isNpcAccent(edit.accent) || !Number.isSafeInteger(edit.revision) || edit.revision < 0 ||
       !["manter","original","trocar"].includes(edit.imageAction) ||
       !Array.isArray(edit.fields) || edit.fields.length > 32 ||
       edit.fields.some((pair) => !Array.isArray(pair) || pair.length !== 2 ||
@@ -158,8 +160,9 @@ async function updateCard(request, bucket, id) {
   const {edit,file} = input;
   const catalogFile = await bucket.get(bucketKey);
   if (!catalogFile) return json({error:"O catálogo ainda não foi importado."},503);
-  const baseline = (await catalogFile.json()).records.find((card) => card.id === id);
-  if (!baseline) return json({error:"Ficha não encontrada."},404);
+  const catalog = await catalogFile.json();
+  const baseline = catalog.records.find((card) => card.id === id);
+  const creating = request.method === "POST";
 
   const url = `${firestore}/aparicaoEdits/${id}`;
   const headers = {Authorization:request.headers.get("Authorization"),"Content-Type":"application/json"};
@@ -168,8 +171,20 @@ async function updateCard(request, bucket, id) {
   const stored = result.ok ? await result.json() : null;
   const revision = Number(stored?.fields?.revision?.integerValue ?? 0);
   const conflict = () => json({error:"A ficha mudou enquanto você editava. Recarregue o catálogo e tente de novo."},409);
-  if (revision !== edit.revision) return conflict();
+  if (revision !== edit.revision || (creating && (stored || baseline))) return conflict();
   const previous = stored ? JSON.parse(stored.fields.payload.stringValue) : baseline;
+  if (!creating && !previous) return json({error:"Ficha não encontrada."},404);
+  const topicId = creating ? edit.topicId : baseline?.topicId ?? previous.topicId;
+  if (creating && !catalog.topics.some((topic) => topic.id === topicId)) {
+    if (typeof topicId !== "string" || !customTopicId.test(topicId)) {
+      return json({error:"Selecione um tópico existente."},400);
+    }
+    const topic = await fetch(`${firestore}/aparicaoTopics/${topicId}`, {
+      headers,redirect:"manual",signal:AbortSignal.timeout(8000),
+    });
+    if (topic.status === 404) return json({error:"Selecione um tópico existente."},400);
+    if (!topic.ok) return rulesError(topic.status);
+  }
 
   let uploaded;
   if (edit.imageAction === "trocar") {
@@ -181,9 +196,10 @@ async function updateCard(request, bucket, id) {
   }
   const next = {
     name:edit.name.trim(),
+    topicId,
     fields:edit.fields.map(([label,value]) => [label.trim(),value.trim()]),
     accent:edit.accent,
-    image:uploaded ?? (edit.imageAction === "original" ? baseline.image : previous.image),
+    image:uploaded ?? (edit.imageAction === "original" ? baseline?.image : previous?.image),
   };
   const precondition = stored ? `currentDocument.updateTime=${encodeURIComponent(stored.updateTime)}` : "currentDocument.exists=false";
   const saved = await fetch(`${url}?${precondition}`, {
@@ -199,11 +215,11 @@ async function updateCard(request, bucket, id) {
     if (["ALREADY_EXISTS","ABORTED","FAILED_PRECONDITION"].includes(failure?.error?.status)) return conflict();
     return rulesError(saved.status);
   }
-  if (previous.image && previous.image !== baseline.image && previous.image !== next.image &&
+  if (previous?.image && previous.image !== baseline?.image && previous.image !== next.image &&
       previous.image.startsWith(`${id}-`) && imageKey.test(previous.image)) {
     await bucket.delete(previous.image).catch(() => {});
   }
-  return json({...baseline,...next,originalImage:baseline.image,revision:revision+1});
+  return json({...baseline,...next,id,originalImage:baseline?.image,revision:revision+1},creating ? 201 : 200);
 }
 
 function rulesError(status) {
@@ -223,12 +239,12 @@ export async function onRequest({request,env,params}) {
   try {
     if (request.method === "GET" && section === "retratos" && arg) return await servePortrait(request,bucket,arg);
     if (!((request.method === "GET" && ["catalogo","sessao"].includes(section) && !arg) ||
-      (request.method === "PUT" && section === "fichas" && /^\d{19}$/.test(arg || "")))) {
+      (["PUT","POST"].includes(request.method) && section === "fichas" && /^\d{19}$/.test(arg || "")))) {
       return json({error:"Rota não encontrada."},404);
     }
     const role = await getRole(request);
     if (!role) return json({error:"Entre com um perfil do SISTEMA-INV."},401);
-    if (request.method === "PUT") {
+    if (request.method === "PUT" || request.method === "POST") {
       if (role !== "admin") return json({error:"A edição é exclusiva do GM."},403);
       return await updateCard(request,bucket,arg);
     }
