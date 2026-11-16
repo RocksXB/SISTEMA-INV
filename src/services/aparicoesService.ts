@@ -14,6 +14,7 @@ export type Npc = {
   originalImage?: string;
   accent?: NpcAccent;
   revision?: number;
+  ageReferenceDate?: string;
 };
 export type NpcTopic = { id: string; title: string };
 export type NpcCatalog = {
@@ -26,6 +27,7 @@ export type NpcEdit = {
   accent: NpcAccent;
   fields: NpcField[];
   imageAction: "manter" | "original" | "trocar";
+  ageReferenceDate?: string;
 };
 
 export const normalizeNpcText = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -90,6 +92,7 @@ export async function loadNpcs(user: User, signal?: AbortSignal): Promise<Loaded
           topicId: typeof data.topicId === "string" ? data.topicId : undefined,
           name: data.name, fields: data.fields, accent: isNpcAccent(data.accent) ? data.accent : undefined,
           image: typeof data.image === "string" ? data.image : undefined, revision,
+          ageReferenceDate: typeof data.ageReferenceDate === "string" ? data.ageReferenceDate : undefined,
         });
       } catch {
         // A malformed manually edited document does not hide the original card.

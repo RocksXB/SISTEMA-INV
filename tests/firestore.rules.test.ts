@@ -99,6 +99,22 @@ beforeEach(async () => {
   });
 });
 
+describe("campaignCalendar Firestore Rules", () => {
+  it("mantém uma data compartilhada com leitura dos jogadores e edição apenas do GM", async () => {
+    const admin = environment.authenticatedContext("admin").firestore();
+    const player = environment.authenticatedContext("alice").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const current = "campaignCalendar/current";
+    await assertFails(setDoc(doc(player, current), { date: "2227-07-11" }));
+    await assertSucceeds(setDoc(doc(admin, current), { date: "2227-07-11" }));
+    await assertSucceeds(getDoc(doc(player, current)));
+    await assertFails(getDoc(doc(anonymous, current)));
+    await assertFails(updateDoc(doc(admin, current), { date: "2227-13-11" }));
+    await assertFails(setDoc(doc(admin, "campaignCalendar/other"), { date: "2227-07-12" }));
+    await assertSucceeds(updateDoc(doc(admin, current), { date: "2227-07-12" }));
+  });
+});
+
 describe("aparicaoTopics Firestore Rules", () => {
   it("permite somente ao GM criar tópicos e mantém a leitura restrita a perfis cadastrados", async () => {
     const id = "t-" + "a".repeat(64);

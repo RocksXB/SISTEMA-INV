@@ -1,0 +1,54 @@
+.calendar-nav[aria-current="page"] { color: var(--cyan); }
+.topbar nav .calendar-nav { white-space: nowrap; }
+.campaign-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.campaign-heading p { margin: 7px 0 0; }
+.campaign-today {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 15px; border: 1px solid var(--border); background: #0b1a28;
+}
+.campaign-today > svg { width: 22px; height: 22px; color: var(--cyan); }
+.campaign-today span { color: var(--muted); font-size: 11px; display: block; }
+.campaign-today time { display: block; margin-top: 3px; color: var(--cyan); font-size: clamp(13px, 2vw, 17px); font-weight: 700; }
+.campaign-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 16px; padding: 12px; }
+.campaign-controls form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.campaign-controls label { color: #9fbac8; font-size: 12px; }
+.campaign-controls input[type="date"] { color-scheme: dark; min-width: 135px; }
+.campaign-controls button:disabled, .campaign-month-heading button:disabled { opacity: .45; cursor: default; }
+.campaign-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(235px, 1fr); align-items: start; gap: 16px; }
+.campaign-month { padding: 14px; min-width: 0; }
+.campaign-month-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 13px; }
+.campaign-month-heading h2 { text-align: center; min-width: 0; flex: 1; margin: 0; font-size: clamp(14px, 2.1vw, 20px); }
+.campaign-month-heading h2::first-letter { text-transform: uppercase; }
+.campaign-month-heading button { min-height: 36px; }
+.campaign-month-heading svg, .campaign-birthdays a > svg { width: 16px; height: 16px; }
+.campaign-weekdays, .campaign-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.campaign-weekdays { margin-bottom: 6px; text-align: center; font-size: 11px; color: var(--muted); }
+.campaign-days { list-style: none; margin: 0; padding: 0; }
+.campaign-days button {
+  width: 100%; min-height: clamp(39px, 6vw, 70px); padding: 5px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  border: 1px solid var(--border); background: #07131e; color: var(--text); font-weight: 600;
+}
+.campaign-days button:hover, .campaign-days button[aria-pressed="true"] { background: #102734; border-color: var(--cyan); }
+.campaign-days button[aria-current="date"] { color: var(--cyan); border-color: var(--cyan); box-shadow: inset 0 0 14px var(--cyan-glow); }
+.campaign-days small { display: inline-flex; align-items: center; gap: 4px; color: #f6db95; font-size: 11px; }
+.campaign-days small svg { width: 12px; height: 12px; }
+.campaign-birthdays ul { list-style: none; margin: 0; padding: 6px 10px; }
+.campaign-birthdays li + li { border-top: 1px solid var(--border); }
+.campaign-birthdays a { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 4px; }
+.campaign-birthdays a:hover { background: #102432; color: var(--cyan); }
+.campaign-birthdays time { display: grid; place-items: center; min-height: 32px; background: #242218; color: #f6db95; font-weight: 700; }
+.campaign-birthdays strong, .campaign-birthdays small { display: block; overflow-wrap: anywhere; }
+.campaign-birthdays strong { font-size: 13px; }
+.campaign-birthdays small { color: var(--muted); font-size: 10px; margin-top: 4px; }
+.campaign-clear-day, .campaign-load { margin: 10px 12px; }
+@media (max-width: 760px) {
+  .campaign-layout { grid-template-columns: minmax(0, 1fr); }
+  .campaign-heading { align-items: flex-start; flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  .campaign-month { padding: 9px; }
+  .campaign-month-heading { gap: 4px; }
+  .campaign-month-heading button { padding-inline: 6px; font-size: 11px; }
+  .campaign-days button { font-size: 12px; padding: 4px; }
+}
