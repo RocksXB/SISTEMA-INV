@@ -4,7 +4,6 @@ import { isNpcAccent, type NpcAccent } from "../config/npcAccents";
 import { db } from "../lib/firebase";
 
 const endpoint = "/api/aparicoes";
-export const maxNpcPortrait = 8 * 1024 * 1024;
 export type NpcField = [string, string];
 export type Npc = {
   id: string;
@@ -135,7 +134,7 @@ async function writeNpc(user: User, id: string, method: "PUT" | "POST",
   return response.json();
 }
 
-export async function fetchNpcImage(link: string) {
+export async function fetchNpcImage(link: string, maxBytes: number) {
   const url = URL.parse(link.trim());
   if (!url || url.protocol !== "https:" || url.username || url.password) {
     throw new Error("Informe um link HTTPS direto para a imagem.");
@@ -162,9 +161,9 @@ export async function fetchNpcImage(link: string) {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > maxNpcPortrait) {
+    if (size > maxBytes) {
       await reader.cancel();
-      throw new Error("O retrato deve ter até 8 MB.");
+      throw new Error(`A imagem do link deve ter até ${maxBytes / 1024 / 1024} MB neste modo.`);
     }
     parts.push(new Uint8Array(value));
   }

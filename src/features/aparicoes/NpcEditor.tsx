@@ -2,8 +2,10 @@ import { useState, type CSSProperties, type FormEvent } from "react";
 import type { User } from "firebase/auth";
 import { ErrorState, Modal } from "../../components/Ui";
 import { npcAccents, type NpcAccent } from "../../config/npcAccents";
+import { isStatusField, specialStatus, type NpcStatus } from "./npcStatus";
+import { prepareNpcPortrait, portraitSourceLimit } from "./portraitCompression";
 import {
-  addNpc, fetchNpcImage, maxNpcPortrait, portraitSrc, saveNpc,
+  addNpc, fetchNpcImage, portraitSrc, saveNpc,
   type Npc, type NpcField, type NpcTopic,
 } from "../../services/aparicoesService";
 
@@ -25,10 +27,31 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
   const [choice, setChoice] = useState<PhotoChoice>("manter");
   const [file, setFile] = useState<File>();
   const [link, setLink] = useState("");
+  const [compress, setCompress] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const originalPicture = npc.originalImage || (npc.revision == null ? npc.image : undefined);
   const picture = choice === "original" ? originalPicture : npc.image;
+  const statusRows = fields.filter((row) => isStatusField(row.label));
+  const specialRow = statusRows.find((row) => specialStatus(row.value));
+  const selectedStatus = specialRow ? specialStatus(specialRow.value) : undefined;
+
+  function setStatus(status: "" | NpcStatus) {
+    if (!status) {
+      setFields((old) => old.filter((row) => !isStatusField(row.label) || !specialStatus(row.value)));
+      return;
+    }
+    const value = status === "morto" ? "Morto" : "Divindade";
+    const current = specialRow || statusRows[0];
+    if (current) {
+      setFields((old) => old.flatMap((row) => row.key === current.key
+        ? [{ ...row, value: specialStatus(row.value) === status ? row.value : value }]
+        : isStatusField(row.label) && specialStatus(row.value) ? [] : [row]));
+    } else if (fields.length < 32) {
+      setFields((old) => [...old, { key: nextKey, label: "Status", value }]);
+      setNextKey(nextKey + 1);
+    }
+  }
 
   function changeField(key: number, property: "label" | "value", text: string) {
     setFields((old) => old.map((row) => row.key === key ? { ...row, [property]: text } : row));
@@ -53,10 +76,11 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
     setBusy(true);
     setError("");
     try {
-      const photo = choice === "link" ? await fetchNpcImage(link) : choice === "arquivo" ? file : undefined;
-      if ((choice === "arquivo" || choice === "link") && (!photo?.size || photo.size > maxNpcPortrait)) {
-        throw new Error("Selecione uma imagem de até 8 MB.");
+      const source = choice === "link" ? await fetchNpcImage(link, portraitSourceLimit(compress)) : choice === "arquivo" ? file : undefined;
+      if ((choice === "arquivo" || choice === "link") && !source?.size) {
+        throw new Error("Selecione uma imagem para o retrato.");
       }
+      const photo = source ? await prepareNpcPortrait(source, compress) : undefined;
       const edit = {
         name: name.trim(), accent, fields: trimmed,
         imageAction: photo ? "trocar" : choice === "original" ? "original" : "manter",
@@ -83,6 +107,13 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
                 </select>
               </label>}
             </div>
+            <label className="npc-status-setting">Status
+              <select value={selectedStatus || ""} onChange={(event) => setStatus(event.target.value as "" | NpcStatus)}>
+                <option value="">Padrão do tópico</option>
+                <option value="morto" disabled={!statusRows.length && fields.length >= 32}>Morto</option>
+                <option value="divindade" disabled={!statusRows.length && fields.length >= 32}>Divindade</option>
+              </select>
+            </label>
             <fieldset className="npc-palette">
               <legend>Cor de destaque <span>{npcAccents[accent][0]}</span></legend>
               <div className="npc-swatches">
@@ -109,7 +140,17 @@ export function NpcEditor({ npc, user, topics, creating, onClose, onSave }: {
                 </label>
                 {choice === "arquivo" && <label>Arquivo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" required onChange={(e) => setFile(e.target.files?.[0])} /></label>}
                 {choice === "link" && <label>Link direto da imagem<input type="url" value={link} placeholder="https://…" required onChange={(e) => setLink(e.target.value)} /></label>}
-                {(choice === "link" || choice === "arquivo") && <small>JPG, PNG, WebP ou GIF, até 8 MB.</small>}
+                {(choice === "link" || choice === "arquivo") && <>
+                  <label>Qualidade do envio
+                    <select value={compress ? "comprimir" : "original"} onChange={(event) => setCompress(event.target.value === "comprimir")}>
+                      <option value="comprimir">Comprimir automaticamente</option>
+                      <option value="original">Enviar original</option>
+                    </select>
+                  </label>
+                  <small>{compress
+                    ? "Imagem de até 24 MB. Tenta reduzir para até 960 px. As animações ficam no formato original."
+                    : "JPG, PNG, WebP ou GIF. Original de até 8 MB."}</small>
+                </>}
               </div>
             </div>
             <div className="npc-fields-title">

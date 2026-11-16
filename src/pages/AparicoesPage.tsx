@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, Folder, FolderPlus, LayoutGrid, Search, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleMinus, Folder, FolderPlus, LayoutGrid, Search, Sparkles, UserPlus } from "lucide-react";
 import { Empty, ErrorState, Loading, Modal, Panel } from "../components/Ui";
 import { npcAccents } from "../config/npcAccents";
 import { useAuth } from "../features/auth/AuthContext";
 import { NpcEditor } from "../features/aparicoes/NpcEditor";
+import { isDivineTopic, npcCardStatus } from "../features/aparicoes/npcStatus";
 import {
   createNpcTopic, loadNpcs, newNpcId, normalizeNpcText, portraitSrc, refreshPortraitSession,
   type LoadedNpcs, type Npc, type NpcField, type NpcTopic,
@@ -29,13 +30,15 @@ function Facts({ fields, detail = false }: { fields: NpcField[]; detail?: boolea
 
 function NpcCard({ npc, topic, onEdit }: { npc: Npc; topic: string; onEdit?: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const status = npcCardStatus(npc.fields, topic);
   const [role, type] = ["funcao", "tipo"].map((key) =>
     npc.fields.find(([label, value]) => normalize(label) === key && value));
   const other = npc.fields.filter((field) => field !== role && field !== type && field[1]);
   const summary = other.filter(([label]) => summaryFields.has(normalize(label)));
   const details = other.filter(([label]) => !summaryFields.has(normalize(label)));
   return (
-    <article className="npc-card" style={{ "--accent": npcAccents[npc.accent || "cyan"][1] } as CSSProperties}>
+    <article className="npc-card" data-status={status}
+      style={{ "--npc-accent": npcAccents[npc.accent || "cyan"][1] } as CSSProperties}>
       <header className="npc-card-head">
         <div className="npc-portrait">
           <span aria-hidden="true">{npc.name.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}</span>
@@ -44,6 +47,8 @@ function NpcCard({ npc, topic, onEdit }: { npc: Npc; topic: string; onEdit?: () 
         <div>
           <p className="npc-topic">{topic}</p>
           <h3>{npc.name}</h3>
+          {status === "morto" && <span className="npc-status"><CircleMinus aria-hidden="true" /> Morto</span>}
+          {status === "divindade" && <span className="npc-status"><Sparkles aria-hidden="true" /> Divindade</span>}
           {role && <p className="npc-role">{role[1].replace(/^Agente:\s*$/i, "Agente")}</p>}
           {type && <p className="npc-type">{type[1]}</p>}
         </div>
@@ -176,8 +181,10 @@ export default function AparicoesPage() {
           <h2 className="panel-title" id="npc-topics-title"><span aria-hidden="true" /> Tópicos</h2>
           <nav className="npc-topic-list" aria-label="Tópicos de Aparições">
             {[{ id: "", title: "Todos os tópicos" }, ...catalog.topics].map(({ id, title }) => {
-              const Icon = id ? Folder : LayoutGrid;
-              return <button key={id} type="button" aria-pressed={topic === id} onClick={() => chooseTopic(id)}>
+              const divine = isDivineTopic(title);
+              const Icon = divine ? Sparkles : id ? Folder : LayoutGrid;
+              return <button key={id} type="button" aria-pressed={topic === id}
+                data-divine={divine || undefined} onClick={() => chooseTopic(id)}>
                 <Icon aria-hidden="true" /><span>{title}</span>
                 <small>{id ? topicCounts.get(id) || 0 : catalog.records.length}</small>
               </button>;
