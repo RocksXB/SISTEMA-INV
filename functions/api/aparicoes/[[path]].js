@@ -1,4 +1,5 @@
 import { isNpcAccent } from "../../../src/config/npcAccents.ts";
+import { removeTrackedPortrait, reservePortraitBytes } from "../../../src/server/aparicoesQuota.js";
 
 const projectId = "telaprincipal-23a86";
 const firestore = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
@@ -191,6 +192,13 @@ async function updateCard(request, bucket, id) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const type = sniffImage(bytes);
     if (!type) return json({error:"Use um retrato JPG, PNG, WebP ou GIF válido."},415);
+    let hasSpace;
+    try {
+      hasSpace = await reservePortraitBytes(bucket, bytes.byteLength);
+    } catch {
+      return json({error:"Não foi possível verificar a cota de retratos. Tente de novo."},503);
+    }
+    if (!hasSpace) return json({error:"Limite de 3 GB atingido. Tente enviar uma versão menor do retrato."},413);
     uploaded = `${id}-${crypto.randomUUID()}.${type[0]}`;
     await bucket.put(uploaded, bytes, {httpMetadata:{contentType:type[1]}});
   }
@@ -210,14 +218,14 @@ async function updateCard(request, bucket, id) {
     }}),
   });
   if (!saved.ok) {
-    if (uploaded && saved.status < 500) await bucket.delete(uploaded).catch(() => {});
+    if (uploaded && saved.status < 500) await removeTrackedPortrait(bucket, uploaded).catch(() => {});
     const failure = await saved.json().catch(() => null);
     if (["ALREADY_EXISTS","ABORTED","FAILED_PRECONDITION"].includes(failure?.error?.status)) return conflict();
     return rulesError(saved.status);
   }
   if (previous?.image && previous.image !== baseline?.image && previous.image !== next.image &&
       previous.image.startsWith(`${id}-`) && imageKey.test(previous.image)) {
-    await bucket.delete(previous.image).catch(() => {});
+    await removeTrackedPortrait(bucket, previous.image).catch(() => {});
   }
   return json({...baseline,...next,id,originalImage:baseline?.image,revision:revision+1},creating ? 201 : 200);
 }

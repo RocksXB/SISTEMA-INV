@@ -628,6 +628,9 @@ original e cada retrato usa seu nome de objeto (por exemplo, `151866880334338868
 O catálogo e os retratos da campanha são carregados pelo R2 e ficam fora do repositório.
 Após configurar a binding, publique um novo deploy. As URLs importadas precisam
 apontar diretamente para imagens HTTPS que permitam a leitura pelo navegador.
+Os envios do editor reservam espaço no R2 antes da gravação. O contador
+`_cota_retratos` começa com os objetos já existentes no bucket e limita os
+uploads do site a 3 GB. O editor oferece compressão automática ou envio do original.
 
 ---
 
