@@ -617,9 +617,10 @@ Alterações em `firestore.rules` exigem.
 
 ### Catálogo de Aparições
 
-A aba **Personagens** abre `/aparicoes` para usuários com perfil. O GM pode editar
-os NPCs. As edições ficam em `aparicaoEdits/{npcId}`, no mesmo Firestore do
-inventário, e requerem a regra correspondente de `firestore.rules`.
+A aba **Personagens** abre `/aparicoes` para usuários com perfil. O GM pode criar
+tópicos, cadastrar NPCs e editar fichas. Os tópicos novos ficam em
+`aparicaoTopics/{topicId}` e as fichas novas e editadas em `aparicaoEdits/{npcId}`.
+As duas coleções usam as regras correspondentes de `firestore.rules`.
 
 Vincule o bucket R2 privado `sistema-inv-aparicoes` ao Pages em produção com a
 variável `APARICOES_MEDIA`. Na raiz do bucket, `fichas.json` contém o catálogo

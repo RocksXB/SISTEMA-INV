@@ -1,12 +1,10 @@
 import type { User } from "firebase/auth";
-import { collection, getDocsFromServer } from "firebase/firestore";
+import { collection, doc, getDocsFromServer, runTransaction } from "firebase/firestore";
+import { isNpcAccent, type NpcAccent } from "../config/npcAccents";
 import { db } from "../lib/firebase";
 
 const endpoint = "/api/aparicoes";
 export const maxNpcPortrait = 8 * 1024 * 1024;
-export const npcAccents = ["cyan", "violet", "amber", "green", "rose"] as const;
-
-export type NpcAccent = (typeof npcAccents)[number];
 export type NpcField = [string, string];
 export type Npc = {
   id: string;
@@ -18,16 +16,41 @@ export type Npc = {
   accent?: NpcAccent;
   revision?: number;
 };
+export type NpcTopic = { id: string; title: string };
 export type NpcCatalog = {
-  topics: Array<{ id: string; title: string }>;
+  topics: NpcTopic[];
   records: Npc[];
 };
+export type LoadedNpcs = NpcCatalog & { editsAvailable: boolean; topicsAvailable: boolean };
 export type NpcEdit = {
   name: string;
   accent: NpcAccent;
   fields: NpcField[];
   imageAction: "manter" | "original" | "trocar";
 };
+
+export const normalizeNpcText = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+export function newNpcId() {
+  const [random] = crypto.getRandomValues(new BigUint64Array(1));
+  return (random % 10_000_000_000_000_000_000n).toString().padStart(19, "0");
+}
+
+export async function createNpcTopic(value: string, topics: NpcTopic[]): Promise<NpcTopic> {
+  const title = value.trim().replace(/\s+/g, " ");
+  if (!title || title.length > 60) throw new Error("Informe um nome de até 60 caracteres.");
+  const normalized = normalizeNpcText(title);
+  const duplicate = "Já existe um tópico com esse nome.";
+  if (topics.some((topic) => normalizeNpcText(topic.title) === normalized)) throw new Error(duplicate);
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized));
+  const id = "t-" + Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const reference = doc(db, "aparicaoTopics", id);
+  await runTransaction(db, async (transaction) => {
+    if ((await transaction.get(reference)).exists()) throw new Error(duplicate);
+    transaction.set(reference, { title });
+  });
+  return { id, title };
+}
 
 async function request(user: User, path: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers);
@@ -40,37 +63,47 @@ async function request(user: User, path: string, options: RequestInit = {}) {
   return response;
 }
 
-export async function loadNpcs(user: User, signal?: AbortSignal): Promise<NpcCatalog & { editsAvailable: boolean }> {
+export async function loadNpcs(user: User, signal?: AbortSignal): Promise<LoadedNpcs> {
   const response = await request(user, "catalogo", { signal });
   const catalog: NpcCatalog = await response.json();
-  try {
-    const documents = await getDocsFromServer(collection(db, "aparicaoEdits"));
-    const edits = new Map<string, Pick<Npc, "name" | "fields" | "accent" | "image" | "revision">>();
-    for (const document of documents.docs) {
+  const [saved, customTopics] = await Promise.allSettled([
+    getDocsFromServer(collection(db, "aparicaoEdits")),
+    getDocsFromServer(collection(db, "aparicaoTopics")),
+  ]);
+  const topics = [...catalog.topics];
+  if (customTopics.status === "fulfilled") {
+    const entries = customTopics.value.docs.flatMap((document) => {
+      const { title } = document.data();
+      return typeof title === "string" && title.trim() ? [{ id: document.id, title }] : [];
+    });
+    topics.push(...entries.sort((a, b) => a.title.localeCompare(b.title, "pt-BR")));
+  }
+  const edits = new Map<string, Omit<Npc, "topicId"> & { topicId?: string }>();
+  if (saved.status === "fulfilled") {
+    for (const document of saved.value.docs) {
       const { revision, payload } = document.data();
       try {
         const data = JSON.parse(payload);
         if (typeof data.name !== "string" || !Array.isArray(data.fields) ||
           !data.fields.every((field: unknown) => Array.isArray(field) && field.length === 2 && field.every((part) => typeof part === "string"))) continue;
         edits.set(document.id, {
-          name: data.name, fields: data.fields, accent: data.accent,
+          id: document.id,
+          topicId: typeof data.topicId === "string" ? data.topicId : undefined,
+          name: data.name, fields: data.fields, accent: isNpcAccent(data.accent) ? data.accent : undefined,
           image: typeof data.image === "string" ? data.image : undefined, revision,
         });
       } catch {
         // A malformed manually edited document does not hide the original card.
       }
     }
-    return {
-      topics: catalog.topics,
-      records: catalog.records.map((original) => {
-        const edit = edits.get(original.id);
-        return edit ? { ...original, ...edit, originalImage: original.image } : original;
-      }),
-      editsAvailable: true,
-    };
-  } catch {
-    return { ...catalog, editsAvailable: false };
   }
+  const records = catalog.records.map((original) => {
+    const edit = edits.get(original.id);
+    edits.delete(original.id);
+    return edit ? { ...original, ...edit, topicId: original.topicId, originalImage: original.image } : original;
+  });
+  const created = Array.from(edits.values()).flatMap((edit) => edit.topicId ? [{ ...edit, topicId: edit.topicId }] : []);
+  return { topics, records: [...created, ...records], editsAvailable: saved.status === "fulfilled", topicsAvailable: customTopics.status === "fulfilled" };
 }
 
 export async function refreshPortraitSession(user: User) {
@@ -86,10 +119,19 @@ export function portraitSrc(key: string) {
 }
 
 export async function saveNpc(user: User, original: Npc, edit: NpcEdit, photo?: Blob): Promise<Npc> {
+  return writeNpc(user, original.id, "PUT", { ...edit, revision: original.revision ?? 0 }, photo);
+}
+
+export async function addNpc(user: User, id: string, topicId: string, edit: NpcEdit, photo?: Blob): Promise<Npc> {
+  return writeNpc(user, id, "POST", { ...edit, topicId, revision: 0 }, photo);
+}
+
+async function writeNpc(user: User, id: string, method: "PUT" | "POST",
+  edit: NpcEdit & { revision: number; topicId?: string }, photo?: Blob): Promise<Npc> {
   const body = new FormData();
-  body.set("ficha", JSON.stringify({ ...edit, revision: original.revision ?? 0 }));
+  body.set("ficha", JSON.stringify(edit));
   if (photo) body.set("retrato", photo, "retrato");
-  const response = await request(user, `fichas/${original.id}`, { method: "PUT", body });
+  const response = await request(user, `fichas/${id}`, { method, body });
   return response.json();
 }
 

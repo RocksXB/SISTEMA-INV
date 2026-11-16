@@ -116,6 +116,15 @@ service cloud.firestore {
       allow create: if admin() && validEdit() && request.resource.data.revision == 1;
       allow update: if admin() && validEdit() && request.resource.data.revision == resource.data.revision + 1;
     }
+    match /aparicaoTopics/{topicId} {
+      allow read: if signedIn() && profile().data.role in ['admin', 'player'];
+      allow create: if admin()
+        && topicId.matches('^t-[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly(['title'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 60;
+    }
     match /items/{itemId} {
       allow read: if signedIn();
       allow write: if admin();
