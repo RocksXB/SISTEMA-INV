@@ -125,6 +125,23 @@ service cloud.firestore {
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 60;
     }
+    match /aparicaoSquads/{squadId} {
+      function validSquad() {
+        let data = request.resource.data;
+        return data.keys().hasOnly(['name', 'memberIds', 'revision'])
+          && data.name is string
+          && data.name.size() > 0
+          && data.name.size() <= 80
+          && data.memberIds is list
+          && data.memberIds.size() <= 1000
+          && data.memberIds.toSet().size() == data.memberIds.size()
+          && data.revision is int;
+      }
+      allow read: if signedIn() && profile().data.role in ['admin', 'player'];
+      allow create: if admin() && validSquad() && request.resource.data.revision == 1;
+      allow update: if admin() && validSquad() && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if admin();
+    }
     match /campaignCalendar/current {
       allow read: if signedIn() && profile().data.role in ['admin', 'player'];
       allow create, update: if admin()

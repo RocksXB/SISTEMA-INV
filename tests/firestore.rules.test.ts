@@ -99,6 +99,27 @@ beforeEach(async () => {
   });
 });
 
+describe("aparicaoSquads Firestore Rules", () => {
+  it("permite ao GM gerenciar equipes e aos jogadores consultar a lista", async () => {
+    const admin = environment.authenticatedContext("admin").firestore();
+    const player = environment.authenticatedContext("alice").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const path = "aparicaoSquads/example";
+    const memberIds = ["1518668803343388682"];
+    const squad = { name: "Equipe de campo", memberIds, revision: 1 };
+    await assertFails(setDoc(doc(player, path), squad));
+    await assertFails(setDoc(doc(admin, path), { ...squad, memberIds: [...memberIds, ...memberIds] }));
+    await assertSucceeds(setDoc(doc(admin, path), squad));
+    await assertSucceeds(getDocs(collection(player, "aparicaoSquads")));
+    await assertFails(getDocs(collection(anonymous, "aparicaoSquads")));
+    await assertFails(updateDoc(doc(player, path), { memberIds: [], revision: 2 }));
+    await assertFails(updateDoc(doc(admin, path), { memberIds: [] }));
+    await assertSucceeds(updateDoc(doc(admin, path), { memberIds: [], revision: 2 }));
+    await assertFails(deleteDoc(doc(player, path)));
+    await assertSucceeds(deleteDoc(doc(admin, path)));
+  });
+});
+
 describe("campaignCalendar Firestore Rules", () => {
   it("mantém uma data compartilhada com leitura dos jogadores e edição apenas do GM", async () => {
     const admin = environment.authenticatedContext("admin").firestore();

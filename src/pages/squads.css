@@ -1,0 +1,100 @@
+.squad-nav[aria-current="page"] { color: var(--cyan); }
+.topbar .squad-nav { white-space: nowrap; }
+
+.squad-heading, .squad-roster > header, .squad-picker-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.squad-heading button, .squad-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.squads-page button > svg, .squad-search svg { width: 17px; height: 17px; flex: none; }
+.squad-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.squad-sidebar { position: sticky; top: 88px; padding: 10px; }
+.squad-sidebar ul, .squad-roster ul, .squad-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.squad-sidebar ul { max-height: 65vh; overflow-y: auto; }
+.squad-sidebar li + li, .squad-roster li + li { margin-top: 6px; }
+.squad-sidebar button, .squad-roster li a {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: rgba(12, 30, 45, 0.55);
+}
+.squad-sidebar button:hover, .squad-sidebar button[aria-pressed="true"], .squad-roster li a:hover {
+  border-color: var(--cyan);
+  background: var(--cyan-glow);
+}
+.squad-sidebar button[aria-pressed="true"], .squad-sidebar svg, .squad-roster li a > svg {
+  color: var(--cyan);
+}
+.squad-sidebar button > span, .squad-roster li a > span, .squad-option span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.squad-sidebar small, .squad-roster small, .squad-option small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.squad-sidebar button:focus-visible, .squad-options input:focus-visible { outline-offset: -2px; }
+.squad-roster { padding: clamp(14px, 3vw, 24px); }
+.squad-roster h2 { margin: 0; overflow-wrap: anywhere; }
+.squad-roster header { margin-bottom: 18px; }
+.squad-roster header p { margin: 5px 0 0; color: var(--muted); }
+.squad-roster li a > svg { flex: none; width: 17px; }
+.squad-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.squad-catalog-note { color: var(--muted); font-size: 0.875rem; }
+
+.squad-modal { max-width: 600px; }
+.squad-form { display: grid; gap: 16px; }
+.squad-form fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+.squad-form fieldset > label:first-child, .squad-picker-heading label { font-weight: 700; }
+.squad-form input:not([type="checkbox"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  color: var(--text);
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  background: rgba(3, 10, 17, 0.8);
+}
+.squad-form #squad-name { margin: 7px 0 18px; }
+.squad-picker-heading, .squad-search { margin-bottom: 7px; }
+.squad-picker-heading span { color: var(--muted); font-size: 0.82rem; }
+.squad-search { position: relative; }
+.squad-search svg { position: absolute; inset: 12px auto auto 12px; color: var(--cyan); pointer-events: none; }
+.squad-search #squad-search { padding-inline-start: 36px; }
+.squad-options { overflow-y: auto; max-height: min(30vh, 300px); border: 1px solid var(--border); }
+.squad-options li + li { border-top: 1px solid var(--border); }
+.squad-option { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
+.squad-option:hover { background: var(--cyan-glow); }
+.squad-option input { flex: none; width: 16px; height: 16px; accent-color: var(--cyan); }
+
+@media (max-width: 700px) {
+  .squad-layout { grid-template-columns: minmax(0, 1fr); }
+  .squad-sidebar { position: static; }
+  .squad-sidebar ul { max-height: 220px; }
+}
