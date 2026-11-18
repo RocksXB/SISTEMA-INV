@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronRight, Pencil, Plus, Search, ShieldHalf, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Empty, ErrorState, Modal, Panel } from "../components/Ui";
+import { CatalogOrder } from "../components/CatalogOrder";
+import { compareCatalogEntries, type CatalogSort } from "../utils/catalogSort";
 import { useAuth } from "../features/auth/AuthContext";
 import { loadNpcs, normalizeNpcText, type LoadedNpcs } from "../services/aparicoesService";
 import { deleteSquad, loadSquads, maxSquadName, saveSquad, type Squad } from "../services/squadService";
@@ -18,6 +20,7 @@ export default function SquadsPage() {
   const [catalog, setCatalog] = useState<LoadedNpcs>();
   const [catalogError, setCatalogError] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [order, setOrder] = useState<CatalogSort>("name");
   const [editor, setEditor] = useState<{ name: string; memberIds: string[]; previous?: Squad }>();
   const [removing, setRemoving] = useState<Squad>();
   const [query, setQuery] = useState("");
@@ -52,7 +55,8 @@ export default function SquadsPage() {
     return () => controller.abort();
   }, [user, needsCatalog, catalog]);
 
-  const selected = squads?.find((squad) => squad.id === selectedId) ?? squads?.[0];
+  const orderedSquads = useMemo(() => squads && [...squads].sort((a, b) => compareCatalogEntries(order, a, b)), [squads, order]);
+  const selected = squads?.find((squad) => squad.id === selectedId) ?? orderedSquads?.[0];
   const topics = useMemo(() => new Map(catalog?.topics.map(({ id, title }) => [id, title])), [catalog]);
   const characters = useMemo(() => [...(catalog?.records ?? [])].sort(byName), [catalog]);
   const linkedIds = new Set(selected?.memberIds);
@@ -123,7 +127,8 @@ export default function SquadsPage() {
       {selected && (
         <div className="squad-layout">
           <aside className="panel squad-sidebar" aria-label="Lista de esquadrões">
-            <ul>{squads?.map((squad) => (
+            <CatalogOrder value={order} onChange={setOrder} />
+            <ul>{orderedSquads?.map((squad) => (
               <li key={squad.id}>
                 <button type="button" aria-pressed={squad.id === selected.id} onClick={() => setSelectedId(squad.id)}>
                   <ShieldHalf aria-hidden="true" />

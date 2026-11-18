@@ -128,7 +128,8 @@ service cloud.firestore {
     match /aparicaoSquads/{squadId} {
       function validSquad() {
         let data = request.resource.data;
-        return data.keys().hasOnly(['name', 'memberIds', 'revision'])
+        return data.keys().hasOnly(['name', 'memberIds', 'revision', 'createdAt'])
+          && (!data.keys().hasAny(['createdAt']) || (data.createdAt is int && data.createdAt > 0))
           && data.name is string
           && data.name.size() > 0
           && data.name.size() <= 80
@@ -139,7 +140,8 @@ service cloud.firestore {
       }
       allow read: if signedIn() && profile().data.role in ['admin', 'player'];
       allow create: if admin() && validSquad() && request.resource.data.revision == 1;
-      allow update: if admin() && validSquad() && request.resource.data.revision == resource.data.revision + 1;
+      allow update: if admin() && validSquad() && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
       allow delete: if admin();
     }
     match /campaignCalendar/current {

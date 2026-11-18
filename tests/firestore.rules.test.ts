@@ -115,6 +115,11 @@ describe("aparicaoSquads Firestore Rules", () => {
     await assertFails(updateDoc(doc(player, path), { memberIds: [], revision: 2 }));
     await assertFails(updateDoc(doc(admin, path), { memberIds: [] }));
     await assertSucceeds(updateDoc(doc(admin, path), { memberIds: [], revision: 2 }));
+    await assertFails(updateDoc(doc(admin, path), { createdAt: 1, revision: 3 }));
+    const datedPath = "aparicaoSquads/dated";
+    await assertSucceeds(setDoc(doc(admin, datedPath), { ...squad, createdAt: 1_800_000_000_000 }));
+    await assertFails(updateDoc(doc(admin, datedPath), { createdAt: 1_800_000_000_001, revision: 2 }));
+    await assertSucceeds(updateDoc(doc(admin, datedPath), { name: "Equipe renomeada", revision: 2 }));
     await assertFails(deleteDoc(doc(player, path)));
     await assertSucceeds(deleteDoc(doc(admin, path)));
   });

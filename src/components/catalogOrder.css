@@ -1,0 +1,22 @@
+.catalog-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  max-width: 100%;
+}
+.catalog-order svg { flex: none; width: 15px; height: 15px; }
+.catalog-order select, .filters .catalog-order select {
+  min-height: 34px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #07121d;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.filters > .catalog-order { flex: 0 1 auto; min-width: 0; }
+.squad-sidebar > .catalog-order { margin: 2px 0 12px; }
