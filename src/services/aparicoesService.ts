@@ -15,6 +15,7 @@ export type Npc = {
   accent?: NpcAccent;
   revision?: number;
   ageReferenceDate?: string;
+  createdAt?: number;
 };
 export type NpcTopic = { id: string; title: string };
 export type NpcCatalog = {
@@ -93,6 +94,7 @@ export async function loadNpcs(user: User, signal?: AbortSignal): Promise<Loaded
           name: data.name, fields: data.fields, accent: isNpcAccent(data.accent) ? data.accent : undefined,
           image: typeof data.image === "string" ? data.image : undefined, revision,
           ageReferenceDate: typeof data.ageReferenceDate === "string" ? data.ageReferenceDate : undefined,
+          createdAt: Number.isSafeInteger(data.createdAt) && data.createdAt > 0 ? data.createdAt : undefined,
         });
       } catch {
         // A malformed manually edited document does not hide the original card.
@@ -100,9 +102,11 @@ export async function loadNpcs(user: User, signal?: AbortSignal): Promise<Loaded
     }
   }
   const records = catalog.records.map((original) => {
+    // Imported IDs are Discord snowflakes, which encode the original posting date.
+    const createdAt = Number((BigInt(original.id) >> 22n) + 1420070400000n);
     const edit = edits.get(original.id);
     edits.delete(original.id);
-    return edit ? { ...original, ...edit, topicId: original.topicId, originalImage: original.image } : original;
+    return edit ? { ...original, ...edit, createdAt, topicId: original.topicId, originalImage: original.image } : { ...original, createdAt };
   });
   const created = Array.from(edits.values()).flatMap((edit) => edit.topicId ? [{ ...edit, topicId: edit.topicId }] : []);
   return { topics, records: [...created, ...records], editsAvailable: saved.status === "fulfilled", topicsAvailable: customTopics.status === "fulfilled" };

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from
 import { ChevronLeft, ChevronRight, CircleMinus, Folder, FolderPlus, LayoutGrid, Search, Sparkles, UserPlus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Empty, ErrorState, Loading, Modal, Panel } from "../components/Ui";
+import { CatalogOrder } from "../components/CatalogOrder";
+import { compareCatalogEntries, type CatalogSort } from "../utils/catalogSort";
 import { npcAccents } from "../config/npcAccents";
 import { useAuth } from "../features/auth/AuthContext";
 import { NpcEditor } from "../features/aparicoes/NpcEditor";
@@ -125,6 +127,7 @@ export default function AparicoesPage() {
   const [topic, setTopic] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [order, setOrder] = useState<CatalogSort>("name");
   const [editing, setEditing] = useState<{ npc: Npc; creating: boolean }>();
   const [addingTopic, setAddingTopic] = useState(false);
   const [notice, setNotice] = useState("");
@@ -164,7 +167,8 @@ export default function AparicoesPage() {
   })) || [], [catalog, topics]);
   const words = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matches = indexed.filter(({ npc, text }) =>
-    (!linkedNpc || npc.id === linkedNpc) && (!topic || npc.topicId === topic) && words.every((word) => text.includes(word)));
+    (!linkedNpc || npc.id === linkedNpc) && (!topic || npc.topicId === topic) && words.every((word) => text.includes(word)))
+    .sort((a, b) => compareCatalogEntries(order, a.npc, b.npc));
 
   if (!catalog && !error) return <Loading label="Carregando personagens…" />;
   const pageCount = Math.ceil(matches.length / pageSize);
@@ -228,6 +232,7 @@ export default function AparicoesPage() {
               <option value="">Todos os tópicos</option>
               {catalog.topics.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
             </select>
+            <CatalogOrder value={order} onChange={(value) => { setOrder(value); setPage(0); }} />
             {linkedNpc && <button type="button" className="secondary" onClick={clearLinkedNpc}>Ver todas as fichas</button>}
             {canCreateTopic && <button type="button" className="secondary npc-mobile-topics" onClick={() => { setNotice(""); setAddingTopic(true); }}>Novo tópico</button>}
             <span role="status">{matches.length} {matches.length === 1 ? "ficha" : "fichas"}</span>

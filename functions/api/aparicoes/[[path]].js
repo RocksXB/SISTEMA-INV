@@ -206,6 +206,7 @@ async function updateCard(request, bucket, id) {
   }
   const next = {
     name:edit.name.trim(),
+    createdAt:creating ? Date.now() : previous?.createdAt,
     topicId,
     ageReferenceDate:edit.ageReferenceDate ?? previous?.ageReferenceDate,
     fields:edit.fields.map(([label,value]) => [label.trim(),value.trim()]),

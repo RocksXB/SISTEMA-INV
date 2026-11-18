@@ -6,19 +6,19 @@ const maxSquadMembers = 1_000;
 const npcId = /^[0-9]{19}$/;
 const squads = () => collection(db, "aparicaoSquads");
 
-export type Squad = { id: string; name: string; memberIds: string[]; revision: number };
+export type Squad = { id: string; name: string; memberIds: string[]; revision: number; createdAt?: number };
 export type SquadDetails = Pick<Squad, "name" | "memberIds">;
 
 export async function loadSquads(): Promise<Squad[]> {
   const snapshot = await getDocsFromServer(squads());
   return snapshot.docs.map((entry) => {
-    const { name, memberIds, revision } = entry.data();
+    const { name, memberIds, revision, createdAt } = entry.data();
     if (typeof name !== "string" || !Array.isArray(memberIds) ||
         !memberIds.every((id) => typeof id === "string" && npcId.test(id)) ||
         !Number.isSafeInteger(revision)) {
       throw new Error("Há um esquadrão com dados inválidos.");
     }
-    return { id: entry.id, name, memberIds, revision };
+    return { id: entry.id, name, memberIds, revision, createdAt: Number.isSafeInteger(createdAt) && createdAt > 0 ? createdAt : undefined };
   });
 }
 
@@ -33,14 +33,15 @@ export async function saveSquad(details: SquadDetails, previous?: Squad): Promis
   }
   const reference = previous ? doc(squads(), previous.id) : doc(squads());
   const revision = previous ? previous.revision + 1 : 1;
+  const createdAt = previous ? previous.createdAt : Date.now();
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(reference);
     if (previous ? snapshot.data()?.revision !== previous.revision : snapshot.exists()) {
       throw new Error("O esquadrão mudou. Atualize a página e tente novamente.");
     }
-    transaction.set(reference, { name, memberIds, revision });
+    transaction.set(reference, { name, memberIds, revision, ...(createdAt === undefined ? {} : { createdAt }) });
   });
-  return { id: reference.id, name, memberIds, revision };
+  return { id: reference.id, name, memberIds, revision, createdAt };
 }
 
 export async function deleteSquad(squad: Squad) {
