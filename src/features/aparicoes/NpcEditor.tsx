@@ -6,7 +6,7 @@ import { ageText, birthdayLabel, birthText, isBirthdayField, npcBirthday, parseB
 import { isStatusField, specialStatus, type NpcStatus } from "./npcStatus";
 import { prepareNpcPortrait, portraitSourceLimit } from "./portraitCompression";
 import {
-  addNpc, fetchNpcImage, portraitSrc, saveNpc,
+  addNpc, fetchNpcImage, normalizeNpcText, portraitSrc, saveNpc,
   type Npc, type NpcField, type NpcTopic,
 } from "../../services/aparicoesService";
 
@@ -28,8 +28,16 @@ export function NpcEditor({ npc, user, topics, creating, campaignDate, onClose, 
   const [accent, setAccent] = useState<NpcAccent>(npc.accent || "cyan");
   const storedBirthdays = npc.fields.filter(([label]) => isBirthdayField(label));
   const inferredBirthday = !birthText(npc.fields) && npcBirthday(npc.fields);
-  const [fields, setFields] = useState(() => npc.fields
-    .filter(([label]) => !isBirthdayField(label)).map(([label, value], key) => ({ key, label, value })));
+  const [fields, setFields] = useState(() => {
+    const labels = new Set(npc.fields.map(([label]) => normalizeNpcText(label.trim())));
+    const defaults: NpcField[] = ["Nacionalidade", "Tipo sanguíneo"]
+      .filter((label) => !labels.has(normalizeNpcText(label)))
+      .slice(0, Math.max(0, 32 - npc.fields.length))
+      .map((label) => [label, ""]);
+    return [...npc.fields, ...defaults]
+      .filter(([label]) => !isBirthdayField(label))
+      .map(([label, value], key) => ({ key, label, value }));
+  });
   const [nextKey, setNextKey] = useState(fields.length);
   const [choice, setChoice] = useState<PhotoChoice>("manter");
   const [file, setFile] = useState<File>();
