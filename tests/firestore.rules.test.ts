@@ -192,6 +192,9 @@ describe("itemRequests Firestore Rules", () => {
     await assertFails(setDoc(doc(player, "itemRequests/invalid-ability"), {
       ...value, mechanics: { ...mechanics, abilities: [{ ...mechanics.abilities[0], type: "admin" }] },
     }));
+    await assertFails(setDoc(doc(player, "itemRequests/invalid-cost"), {
+      ...value, mechanics: { ...mechanics, abilities: [{ ...mechanics.abilities[0], cost: 5 }] },
+    }));
     await assertSucceeds(setDoc(doc(admin, "items/artifact"), value));
     await assertSucceeds(updateDoc(doc(admin, "items/sword"), { description: "Texto antigo\npreservado." }));
     await assertFails(setDoc(doc(player, "items/artifact"), value));
