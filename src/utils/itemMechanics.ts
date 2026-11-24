@@ -46,3 +46,15 @@ export function validateItemExtras(item: ItemExtras): string[] {
   }
   return [];
 }
+
+export function readItemData(value: Record<string, unknown>) {
+  const { mechanics, artifactSeries, ...data } = value;
+  const hasSeries = artifactSeries == null || ARTIFACT_SERIES.some((entry) => entry.value === artifactSeries);
+  const hasMechanics = mechanics !== undefined &&
+    validateItemExtras({ mechanics: mechanics as ItemMechanics }).length === 0;
+  return {
+    ...data,
+    ...(artifactSeries !== undefined && hasSeries ? { artifactSeries } : {}),
+    ...(hasMechanics ? { mechanics } : {}),
+  };
+}

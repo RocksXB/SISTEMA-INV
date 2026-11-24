@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { ItemDefinition } from "../types";
-import { validateItemExtras } from "../utils/itemMechanics";
+import { readItemData, validateItemExtras } from "../utils/itemMechanics";
 const ref = collection(db, "items");
 export const subscribeItems = (
   cb: (v: ItemDefinition[]) => void,
@@ -24,12 +24,12 @@ export const subscribeItems = (
 ): Unsubscribe =>
   onSnapshot(
     ref,
-    (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }) as ItemDefinition)),
+    (s) => cb(s.docs.map((d) => ({ id: d.id, ...readItemData(d.data()) }) as ItemDefinition)),
     error,
   );
 export async function getItems() {
   const s = await getDocs(ref);
-  return s.docs.map((d) => ({ id: d.id, ...d.data() }) as ItemDefinition);
+  return s.docs.map((d) => ({ id: d.id, ...readItemData(d.data()) }) as ItemDefinition);
 }
 export async function saveItem(
   item: Omit<ItemDefinition, "id"> | ItemDefinition,

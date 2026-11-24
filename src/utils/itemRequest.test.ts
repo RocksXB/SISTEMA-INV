@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ItemRequestDraft } from "../types";
-import { EMPTY_ITEM_MECHANICS } from "./itemMechanics";
+import { EMPTY_ITEM_MECHANICS, readItemData } from "./itemMechanics";
 import { itemRarityConfig } from "../config/itemRarities";
 import {
   approvalCreatesCatalogItem,
@@ -51,6 +51,12 @@ describe("solicitações de item", () => {
     expect(validateItemRequest({
       ...draft, mechanics: { ...draft.mechanics!, abilities: [{ ...draft.mechanics!.abilities[0], name: "" }] },
     })).toHaveLength(1);
+    expect(readItemData({
+      ...draft, mechanics: { ...draft.mechanics, abilities: [{ ...draft.mechanics!.abilities[0], roll: 5 }] },
+    })).toEqual(expect.objectContaining({ description: draft.description, artifactSeries: "platinum" }));
+    expect(readItemData({
+      ...draft, mechanics: { ...draft.mechanics, abilities: [{ ...draft.mechanics!.abilities[0], roll: 5 }] },
+    })).not.toHaveProperty("mechanics");
   });
   it("valida nome, quantidade, peso, pilha e equipamento", () => {
     expect(validateItemRequest(valid)).toEqual([]);

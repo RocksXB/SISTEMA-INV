@@ -25,16 +25,12 @@ service cloud.firestore {
       return data.get(field, '') is string && data.get(field, '').size() <= limit;
     }
     function validItemAbility(data) {
-      // Concatenation also verifies that every displayed field is a string.
-      let text = data.id + data.name + data.effect + data.cost + data.roll
-        + data.damageType + data.duration + data.cooldown;
       return data is map
         && data.keys().hasOnly(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
-        && data.id is string && data.id.size() > 0 && data.id.size() <= 80
-        && data.name.size() > 0 && data.name.size() <= 150
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 150
         && data.type in ['active','passive']
-        && data.effect.size() <= 8000
-        && text.size() <= 9730;
+        && data.effect is string && data.effect.size() <= 8000
+        && data.cost is string;
     }
     function validItemMechanics(data) {
       return data is map
