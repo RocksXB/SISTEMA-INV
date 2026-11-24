@@ -27,16 +27,15 @@ service cloud.firestore {
     function validItemAbility(data) {
       return data is map
         && data.keys().hasOnly(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
-        && data.keys().hasAll(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
         && data.id is string && data.id.size() > 0 && data.id.size() <= 80
         && data.name is string && data.name.size() > 0 && data.name.size() <= 150
         && data.type in ['active','passive']
-        && itemText(data, 'effect', 8000)
-        && itemText(data, 'cost', 300)
-        && itemText(data, 'roll', 300)
-        && itemText(data, 'damageType', 300)
-        && itemText(data, 'duration', 300)
-        && itemText(data, 'cooldown', 300);
+        && data.effect is string && data.effect.size() <= 8000
+        && data.cost is string && data.cost.size() <= 300
+        && data.roll is string && data.roll.size() <= 300
+        && data.damageType is string && data.damageType.size() <= 300
+        && data.duration is string && data.duration.size() <= 300
+        && data.cooldown is string && data.cooldown.size() <= 300;
     }
     function validItemMechanics(data) {
       return data is map
