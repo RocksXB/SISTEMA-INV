@@ -24,14 +24,6 @@ service cloud.firestore {
     function itemText(data, field, limit) {
       return data.get(field, '') is string && data.get(field, '').size() <= limit;
     }
-    function validItemAbility(data) {
-      return data is map
-        && data.keys().hasOnly(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 150
-        && data.type in ['active','passive']
-        && data.effect is string && data.effect.size() <= 8000
-        && data.cost is string;
-    }
     function validItemMechanics(data) {
       return data is map
         && data.keys().hasOnly(['type','attunement','baseDamage','charges','activationCost','exhaustion','risks','abilities'])
@@ -45,18 +37,18 @@ service cloud.firestore {
         && itemText(data, 'risks', 8000)
         && data.abilities is list
         && data.abilities.size() <= 12
-        && (data.abilities.size() < 1 || validItemAbility(data.abilities[0]))
-        && (data.abilities.size() < 2 || validItemAbility(data.abilities[1]))
-        && (data.abilities.size() < 3 || validItemAbility(data.abilities[2]))
-        && (data.abilities.size() < 4 || validItemAbility(data.abilities[3]))
-        && (data.abilities.size() < 5 || validItemAbility(data.abilities[4]))
-        && (data.abilities.size() < 6 || validItemAbility(data.abilities[5]))
-        && (data.abilities.size() < 7 || validItemAbility(data.abilities[6]))
-        && (data.abilities.size() < 8 || validItemAbility(data.abilities[7]))
-        && (data.abilities.size() < 9 || validItemAbility(data.abilities[8]))
-        && (data.abilities.size() < 10 || validItemAbility(data.abilities[9]))
-        && (data.abilities.size() < 11 || validItemAbility(data.abilities[10]))
-        && (data.abilities.size() < 12 || validItemAbility(data.abilities[11]));
+        && (data.abilities.size() < 1 || data.abilities[0] is map)
+        && (data.abilities.size() < 2 || data.abilities[1] is map)
+        && (data.abilities.size() < 3 || data.abilities[2] is map)
+        && (data.abilities.size() < 4 || data.abilities[3] is map)
+        && (data.abilities.size() < 5 || data.abilities[4] is map)
+        && (data.abilities.size() < 6 || data.abilities[5] is map)
+        && (data.abilities.size() < 7 || data.abilities[6] is map)
+        && (data.abilities.size() < 8 || data.abilities[7] is map)
+        && (data.abilities.size() < 9 || data.abilities[8] is map)
+        && (data.abilities.size() < 10 || data.abilities[9] is map)
+        && (data.abilities.size() < 11 || data.abilities[10] is map)
+        && (data.abilities.size() < 12 || data.abilities[11] is map);
     }
     function validItemExtras(data) {
       return (!data.keys().hasAny(['artifactSeries']) || data.artifactSeries == null
