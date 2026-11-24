@@ -11,6 +11,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
+import { readItemData } from "../utils/itemMechanics";
 import type {
   InventoryItem,
   ItemDefinition,
@@ -26,7 +27,7 @@ import {
 
 const requests = collection(db, "itemRequests");
 const requestData = (snapshot: { id: string; data: () => unknown }) =>
-  ({ id: snapshot.id, ...(snapshot.data() as object) }) as ItemRequest;
+  ({ id: snapshot.id, ...readItemData(snapshot.data() as Record<string, unknown>) }) as ItemRequest;
 
 export function subscribeMyItemRequests(
   uid: string,
@@ -175,7 +176,7 @@ export async function approveItemRequest(
         throw new Error("O item selecionado não está disponível.");
       definition = {
         id: itemSnapshot.id,
-        ...itemSnapshot.data(),
+        ...readItemData(itemSnapshot.data()),
       } as ItemDefinition;
     } else {
       const errors = validateItemRequest(option.create);

@@ -1,6 +1,6 @@
 import { Box, CheckCircle2 } from "lucide-react";
 import { categoryLabel } from "../config/itemCategories";
-import { rarityConfig } from "../config/itemRarities";
+import { itemRarityConfig } from "../config/itemRarities";
 import type { HydratedInventoryItem } from "../types";
 import { calculateStackWeight, formatWeight } from "../utils/inventory";
 export function InventoryCard({
@@ -11,7 +11,7 @@ export function InventoryCard({
   onClick: () => void;
 }) {
   const i = entry.definition,
-    r = rarityConfig(i.rarity);
+    r = itemRarityConfig(i);
   return (
     <button className={`item-card ${r.className}`} onClick={onClick}>
       <div className="item-image">

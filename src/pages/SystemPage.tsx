@@ -11,7 +11,8 @@ import { Navigate, useParams } from "react-router-dom";
 import { EQUIPMENT_SLOTS, slotLabel } from "../config/equipmentSlots";
 import { ENCUMBRANCE_CONFIG } from "../config/encumbrance";
 import { ITEM_CATEGORIES, categoryLabel } from "../config/itemCategories";
-import { ITEM_RARITIES, rarityConfig } from "../config/itemRarities";
+import { ARTIFACT_SERIES, ITEM_RARITIES, itemRarityConfig } from "../config/itemRarities";
+import { ItemSheetContent } from "../components/ItemSheetContent";
 import { InventoryCard } from "../components/InventoryCard";
 import { CharacterSkills } from "../components/CharacterSkills";
 import { PlayerItemRequests } from "../components/PlayerItemRequests";
@@ -78,7 +79,7 @@ export function SystemPage() {
                 t.toLowerCase().includes(search.toLowerCase()),
               )) &&
             (category === "all" || i.category === category) &&
-            (rarity === "all" || i.rarity === rarity) &&
+            (rarity === "all" || (i.artifactSeries ? `series:${i.artifactSeries}` : i.rarity) === rarity) &&
             (equipped === "all" || String(x.equipped) === equipped)
           );
         })
@@ -89,8 +90,8 @@ export function SystemPage() {
               ? b.definition.weight - a.definition.weight
               : sort === "quantity"
                 ? b.quantity - a.quantity
-                : rarityConfig(b.definition.rarity).priority -
-                  rarityConfig(a.definition.rarity).priority,
+                : itemRarityConfig(b.definition).priority -
+                  itemRarityConfig(a.definition).priority,
         ),
     [inventory, search, category, rarity, equipped, sort],
   );
@@ -271,11 +272,14 @@ export function SystemPage() {
                 onChange={(e) => setRarity(e.target.value)}
               >
                 <option value="all">Todas raridades</option>
-                {ITEM_RARITIES.map((x) => (
+                <optgroup label="Raridades">{ITEM_RARITIES.map((x) => (
                   <option value={x.value} key={x.value}>
                     {x.label}
                   </option>
-                ))}
+                ))}</optgroup>
+                <optgroup label="Artefatos">{ARTIFACT_SERIES.map((series) => (
+                  <option value={`series:${series.value}`} key={series.value}>{series.label}</option>
+                ))}</optgroup>
               </select>
               <select
                 aria-label="Equipado"
@@ -353,10 +357,10 @@ export function SystemPage() {
                 <div className="item-preview-badges">
                   <span
                     className={
-                      rarityConfig(selected.definition.rarity).className
+                      itemRarityConfig(selected.definition).className
                     }
                   >
-                    {rarityConfig(selected.definition.rarity).label}
+                    {itemRarityConfig(selected.definition).label}
                   </span>
                   <span>{categoryLabel(selected.definition.category)}</span>
                 </div>
@@ -382,16 +386,7 @@ export function SystemPage() {
                   </p>
                   <h3>{selected.customName || selected.definition.name}</h3>
                 </div>
-                <section
-                  className="item-description"
-                  aria-labelledby="item-description-title"
-                >
-                  <h3 id="item-description-title">Descrição</h3>
-                  <p>
-                    {selected.definition.description ||
-                      "Sem descrição registrada."}
-                  </p>
-                </section>
+                <ItemSheetContent item={selected.definition} />
                 <dl className="item-meta-grid">
                   <div>
                     <dt>Quantidade</dt>
