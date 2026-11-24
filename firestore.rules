@@ -200,8 +200,7 @@ service cloud.firestore {
     }
     match /items/{itemId} {
       allow read: if signedIn();
-      allow create, update: if admin() && validItemExtras(request.resource.data);
-      allow delete: if admin();
+      allow write: if admin();
     }
     match /characters/{characterId} {
       allow read: if admin() || (signedIn() && resource.data.ownerId == request.auth.uid);

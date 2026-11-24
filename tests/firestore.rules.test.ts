@@ -16,6 +16,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { readFileSync } from "node:fs";
 import {
@@ -198,10 +199,16 @@ describe("itemRequests Firestore Rules", () => {
     await assertSucceeds(setDoc(doc(admin, "items/artifact"), value));
     await assertSucceeds(updateDoc(doc(admin, "items/sword"), { description: "Texto antigo\npreservado." }));
     await assertFails(setDoc(doc(player, "items/artifact"), value));
-    await assertSucceeds(updateDoc(doc(admin, "itemRequests/artifact"), {
+    const approval = writeBatch(admin);
+    approval.set(doc(admin, "items/artifact"), value);
+    approval.set(doc(admin, "characters/alice-character/inventory/artifact"), {
+      itemId: "artifact", quantity: 1, equipped: false, equipmentSlot: null,
+    });
+    approval.update(doc(admin, "itemRequests/artifact"), {
       status: "approved", reviewedBy: "admin", reviewedAt: serverTimestamp(),
       updatedAt: serverTimestamp(), approvedItemId: "artifact",
-    }));
+    });
+    await assertSucceeds(approval.commit());
   });
   it("permite criar solicitação própria pending", async () => {
     const db = environment.authenticatedContext("alice").firestore();
