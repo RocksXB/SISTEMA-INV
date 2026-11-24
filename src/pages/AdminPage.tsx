@@ -10,9 +10,9 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ITEM_CATEGORIES } from "../config/itemCategories";
-import { EQUIPMENT_SLOTS } from "../config/equipmentSlots";
-import { ITEM_RARITIES } from "../config/itemRarities";
+import { categoryLabel } from "../config/itemCategories";
+import { itemRarityConfig } from "../config/itemRarities";
+import { ItemRequestForm } from "../components/ItemRequestForm";
 import { skillTypeLabel } from "../config/skillTypes";
 import { Modal, Empty, ErrorState, Loading, Panel } from "../components/Ui";
 import { useItems } from "../hooks/useItems";
@@ -37,10 +37,7 @@ import { AdminSkillRequests } from "../components/AdminSkillRequests";
 import { EMPTY_SKILL_REQUEST, SkillForm } from "../components/SkillForm";
 import type {
   Character,
-  EquipmentSlot,
-  ItemCategory,
   ItemDefinition,
-  ItemRarity,
   SkillDefinition,
   SkillRequestDraft,
 } from "../types";
@@ -228,7 +225,7 @@ export function AdminPage() {
                   <div>
                     <b>{i.name}</b>
                     <span>
-                      {i.category} // {i.rarity} // {i.weight} kg
+                      {categoryLabel(i.category)} // {itemRarityConfig(i).label} // {i.weight} kg
                     </span>
                   </div>
                   <div>
@@ -406,176 +403,16 @@ function ItemForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [v, setV] = useState(initial),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
   const id = "id" in initial ? initial.id : undefined;
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await saveItem(v, id);
-      onSaved();
-    } catch {
-      setError("Falha ao salvar. Verifique os dados e permissões.");
-      setBusy(false);
-    }
-  }
-  function slot(s: EquipmentSlot) {
-    setV({
-      ...v,
-      allowedEquipmentSlots: v.allowedEquipmentSlots.includes(s)
-        ? v.allowedEquipmentSlots.filter((x) => x !== s)
-        : [...v.allowedEquipmentSlots, s],
-    });
-  }
   return (
     <Modal title={id ? "Editar item" : "Novo item"} onClose={onClose}>
-      <form className="admin-form" onSubmit={submit}>
-        <label>
-          Nome
-          <input
-            required
-            value={v.name}
-            onChange={(e) => setV({ ...v, name: e.target.value })}
-          />
-        </label>
-        <label>
-          Descrição
-          <textarea
-            value={v.description}
-            onChange={(e) => setV({ ...v, description: e.target.value })}
-          />
-        </label>
-        <label>
-          URL da imagem
-          <input
-            type="url"
-            value={v.imageUrl}
-            onChange={(e) => setV({ ...v, imageUrl: e.target.value })}
-          />
-        </label>
-        <div className="form-grid">
-          <label>
-            Categoria
-            <select
-              value={v.category}
-              onChange={(e) =>
-                setV({ ...v, category: e.target.value as ItemCategory })
-              }
-            >
-              {ITEM_CATEGORIES.map((x) => (
-                <option key={x.value} value={x.value}>
-                  {x.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Raridade
-            <select
-              value={v.rarity}
-              onChange={(e) =>
-                setV({ ...v, rarity: e.target.value as ItemRarity })
-              }
-            >
-              {ITEM_RARITIES.map((x) => (
-                <option key={x.value} value={x.value}>
-                  {x.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Peso (kg)
-            <input
-              required
-              min="0"
-              step="0.001"
-              type="number"
-              value={v.weight}
-              onChange={(e) => setV({ ...v, weight: Number(e.target.value) })}
-            />
-          </label>
-          <label>
-            Máximo por pilha
-            <input
-              required
-              min="1"
-              type="number"
-              disabled={!v.stackable}
-              value={v.maxStack}
-              onChange={(e) => setV({ ...v, maxStack: Number(e.target.value) })}
-            />
-          </label>
-        </div>
-        <div className="checks">
-          <label>
-            <input
-              type="checkbox"
-              checked={v.stackable}
-              onChange={(e) =>
-                setV({
-                  ...v,
-                  stackable: e.target.checked,
-                  maxStack: e.target.checked ? v.maxStack : 1,
-                })
-              }
-            />{" "}
-            Empilhável
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={v.equippable}
-              onChange={(e) =>
-                setV({
-                  ...v,
-                  equippable: e.target.checked,
-                  allowedEquipmentSlots: e.target.checked
-                    ? v.allowedEquipmentSlots
-                    : [],
-                })
-              }
-            />{" "}
-            Equipável
-          </label>
-        </div>
-        {v.equippable && (
-          <fieldset>
-            <legend>Slots permitidos</legend>
-            {EQUIPMENT_SLOTS.map((x) => (
-              <label key={x.value}>
-                <input
-                  type="checkbox"
-                  checked={v.allowedEquipmentSlots.includes(x.value)}
-                  onChange={() => slot(x.value)}
-                />
-                {x.label}
-              </label>
-            ))}
-          </fieldset>
-        )}
-        <label>
-          Tags (separadas por vírgula)
-          <input
-            value={v.tags.join(", ")}
-            onChange={(e) =>
-              setV({
-                ...v,
-                tags: e.target.value
-                  .split(",")
-                  .map((x) => x.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-        </label>
-        {error && <div className="form-error">{error}</div>}
-        <button className="primary" disabled={busy}>
-          {busy ? "SALVANDO..." : "SALVAR ITEM"}
-        </button>
-      </form>
+      <ItemRequestForm initial={{ ...initial, quantity: 1 }} showQuantity={false}
+        submitLabel="SALVAR ITEM" onSubmit={async (draft) => {
+          const { quantity: _quantity, ...item } = draft;
+          void _quantity;
+          await saveItem(item, id);
+          onSaved();
+        }} />
     </Modal>
   );
 }

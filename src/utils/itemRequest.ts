@@ -1,4 +1,5 @@
 import { EQUIPMENT_SLOTS } from "../config/equipmentSlots";
+import { validateItemExtras } from "./itemMechanics";
 import type {
   InventoryItem,
   ItemDefinition,
@@ -14,7 +15,7 @@ export function validateItemRequest(
   itemForApproval?: ItemDefinition,
 ): string[] {
   const value = itemForApproval ?? request;
-  const errors: string[] = [];
+  const errors: string[] = validateItemExtras(value);
   if (!request.name.trim()) errors.push("Informe o nome do item.");
   if (!Number.isInteger(request.quantity) || request.quantity < 1)
     errors.push("A quantidade deve ser um inteiro maior ou igual a 1.");

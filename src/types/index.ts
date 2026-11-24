@@ -16,6 +16,32 @@ export type ItemRarity =
   | "epic"
   | "legendary"
   | "mythic";
+export type ArtifactSeries = "bronze" | "silver" | "gold" | "platinum" | "diamond" | "mythic";
+export interface ItemAbility {
+  id: string;
+  name: string;
+  type: "active" | "passive";
+  effect: string;
+  cost: string;
+  roll: string;
+  damageType: string;
+  duration: string;
+  cooldown: string;
+}
+export interface ItemMechanics {
+  type: string;
+  attunement: string;
+  baseDamage: string;
+  charges: string;
+  activationCost: string;
+  exhaustion: string;
+  risks: string;
+  abilities: ItemAbility[];
+}
+export interface ItemExtras {
+  artifactSeries?: ArtifactSeries | null;
+  mechanics?: ItemMechanics;
+}
 export type EquipmentSlot =
   | "head"
   | "chest"
@@ -60,7 +86,7 @@ export interface Character {
   createdAt?: DateValue;
   updatedAt?: DateValue;
 }
-export interface ItemDefinition {
+export interface ItemDefinition extends ItemExtras {
   id: string;
   name: string;
   description: string;
@@ -91,7 +117,7 @@ export interface InventoryItem {
 export interface HydratedInventoryItem extends InventoryItem {
   definition: ItemDefinition;
 }
-export interface ItemRequest {
+export interface ItemRequest extends ItemExtras {
   id: string;
   requestedBy: string;
   characterId: string;

@@ -174,6 +174,32 @@ describe("aparicaoEdits Firestore Rules", () => {
 });
 
 describe("itemRequests Firestore Rules", () => {
+  it("transporta artefatos com 12 habilidades e preserva os registros antigos", async () => {
+    const player = environment.authenticatedContext("alice").firestore();
+    const admin = environment.authenticatedContext("admin").firestore();
+    const mechanics = {
+      type: "Cimitarras", attunement: "Nível 6", baseDamage: "2d12 + PRE",
+      charges: "5", activationCost: "1 Trava", exhaustion: "", risks: "",
+      abilities: Array.from({ length: 12 }, (_, index) => ({
+        id: String(index), name: "Habilidade", type: index % 2 ? "passive" : "active",
+        effect: "Efeito do item.", cost: "", roll: "", damageType: "", duration: "", cooldown: "",
+      })),
+    };
+    const value = { ...request("alice", "alice-character"), artifactSeries: "platinum", mechanics };
+    const ref = doc(player, "itemRequests/artifact");
+    await assertSucceeds(setDoc(ref, value));
+    await assertFails(setDoc(doc(player, "itemRequests/invalid-series"), { ...value, artifactSeries: "unknown" }));
+    await assertFails(setDoc(doc(player, "itemRequests/invalid-ability"), {
+      ...value, mechanics: { ...mechanics, abilities: [{ ...mechanics.abilities[0], type: "admin" }] },
+    }));
+    await assertSucceeds(setDoc(doc(admin, "items/artifact"), value));
+    await assertSucceeds(updateDoc(doc(admin, "items/sword"), { description: "Texto antigo\npreservado." }));
+    await assertFails(setDoc(doc(player, "items/artifact"), value));
+    await assertSucceeds(updateDoc(doc(admin, "itemRequests/artifact"), {
+      status: "approved", reviewedBy: "admin", reviewedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(), approvedItemId: "artifact",
+    }));
+  });
   it("permite criar solicitação própria pending", async () => {
     const db = environment.authenticatedContext("alice").firestore();
     await assertSucceeds(

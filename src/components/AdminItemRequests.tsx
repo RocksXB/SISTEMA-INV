@@ -29,6 +29,8 @@ const toDraft = (request: ItemRequest): ItemRequestDraft => ({
   allowedEquipmentSlots: request.allowedEquipmentSlots,
   tags: request.tags,
   quantity: request.quantity,
+  ...(request.mechanics ? { mechanics: request.mechanics } : {}),
+  ...(request.artifactSeries !== undefined ? { artifactSeries: request.artifactSeries } : {}),
 });
 
 export function AdminItemRequests({

@@ -21,12 +21,61 @@ service cloud.firestore {
             && itemForInventory().equippable == true
             && request.resource.data.equipmentSlot in itemForInventory().allowedEquipmentSlots));
     }
+    function itemText(data, field, limit) {
+      return data.get(field, '') is string && data.get(field, '').size() <= limit;
+    }
+    function validItemAbility(data) {
+      return data is map
+        && data.keys().hasOnly(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
+        && data.keys().hasAll(['id','name','type','effect','cost','roll','damageType','duration','cooldown'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 80
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 150
+        && data.type in ['active','passive']
+        && itemText(data, 'effect', 8000)
+        && itemText(data, 'cost', 300)
+        && itemText(data, 'roll', 300)
+        && itemText(data, 'damageType', 300)
+        && itemText(data, 'duration', 300)
+        && itemText(data, 'cooldown', 300);
+    }
+    function validItemMechanics(data) {
+      return data is map
+        && data.keys().hasOnly(['type','attunement','baseDamage','charges','activationCost','exhaustion','risks','abilities'])
+        && data.keys().hasAll(['type','attunement','baseDamage','charges','activationCost','exhaustion','risks','abilities'])
+        && itemText(data, 'type', 300)
+        && itemText(data, 'attunement', 300)
+        && itemText(data, 'baseDamage', 300)
+        && itemText(data, 'charges', 300)
+        && itemText(data, 'activationCost', 300)
+        && itemText(data, 'exhaustion', 8000)
+        && itemText(data, 'risks', 8000)
+        && data.abilities is list
+        && data.abilities.size() <= 12
+        && (data.abilities.size() < 1 || validItemAbility(data.abilities[0]))
+        && (data.abilities.size() < 2 || validItemAbility(data.abilities[1]))
+        && (data.abilities.size() < 3 || validItemAbility(data.abilities[2]))
+        && (data.abilities.size() < 4 || validItemAbility(data.abilities[3]))
+        && (data.abilities.size() < 5 || validItemAbility(data.abilities[4]))
+        && (data.abilities.size() < 6 || validItemAbility(data.abilities[5]))
+        && (data.abilities.size() < 7 || validItemAbility(data.abilities[6]))
+        && (data.abilities.size() < 8 || validItemAbility(data.abilities[7]))
+        && (data.abilities.size() < 9 || validItemAbility(data.abilities[8]))
+        && (data.abilities.size() < 10 || validItemAbility(data.abilities[9]))
+        && (data.abilities.size() < 11 || validItemAbility(data.abilities[10]))
+        && (data.abilities.size() < 12 || validItemAbility(data.abilities[11]));
+    }
+    function validItemExtras(data) {
+      return (!data.keys().hasAny(['artifactSeries']) || data.artifactSeries == null
+          || data.artifactSeries in ['bronze','silver','gold','platinum','diamond','mythic'])
+        && (!data.keys().hasAny(['mechanics']) || validItemMechanics(data.mechanics));
+    }
     function validRequest() {
       return request.resource.data.requestedBy is string
         && request.resource.data.characterId is string
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.description is string
+        && validItemExtras(request.resource.data)
         && request.resource.data.category in ['weapon','armor','accessory','consumable','tool','material','quest','miscellaneous']
         && request.resource.data.rarity in ['common','uncommon','rare','epic','legendary','mythic']
         && request.resource.data.tags is list
@@ -153,7 +202,8 @@ service cloud.firestore {
     }
     match /items/{itemId} {
       allow read: if signedIn();
-      allow write: if admin();
+      allow create, update: if admin() && validItemExtras(request.resource.data);
+      allow delete: if admin();
     }
     match /characters/{characterId} {
       allow read: if admin() || (signedIn() && resource.data.ownerId == request.auth.uid);
@@ -204,7 +254,7 @@ service cloud.firestore {
     match /itemRequests/{requestId} {
       allow read: if admin() || (signedIn() && resource.data.requestedBy == request.auth.uid);
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['requestedBy','characterId','status','name','description','category','weight','imageUrl','rarity','stackable','maxStack','equippable','allowedEquipmentSlots','tags','quantity','createdAt','updatedAt'])
+        && request.resource.data.keys().hasOnly(['requestedBy','characterId','status','name','description','category','weight','imageUrl','rarity','stackable','maxStack','equippable','allowedEquipmentSlots','tags','quantity','createdAt','updatedAt','artifactSeries','mechanics'])
         && request.resource.data.requestedBy == request.auth.uid
         && get(/databases/$(database)/documents/characters/$(request.resource.data.characterId)).data.ownerId == request.auth.uid
         && request.resource.data.status == 'pending'

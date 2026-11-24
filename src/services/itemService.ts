@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { ItemDefinition } from "../types";
+import { validateItemExtras } from "../utils/itemMechanics";
 const ref = collection(db, "items");
 export const subscribeItems = (
   cb: (v: ItemDefinition[]) => void,
@@ -34,6 +35,8 @@ export async function saveItem(
   item: Omit<ItemDefinition, "id"> | ItemDefinition,
   id?: string,
 ) {
+  const errors = validateItemExtras(item);
+  if (errors.length) throw new Error(errors[0]);
   const { id: _ignored, ...value } = item as ItemDefinition;
   void _ignored;
   const data = { ...value, updatedAt: serverTimestamp() };
