@@ -154,8 +154,8 @@ export default function SquadsPage() {
               <li key={character.id}>
                 <Link to={`/aparicoes?personagem=${encodeURIComponent(character.id)}`}>
                   <span><b className="squad-member-name">
+                    {character.name}{" "}
                     {selected.memberRoles?.[character.id] && <span className="squad-role-badge">{selected.memberRoles[character.id]}</span>}
-                    {character.name}
                   </b><small>{topics.get(character.topicId)}</small></span>
                   <ChevronRight aria-hidden="true" />
                 </Link>
