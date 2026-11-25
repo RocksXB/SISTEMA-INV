@@ -92,6 +92,13 @@
 .squad-option { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
 .squad-option:hover { background: var(--cyan-glow); }
 .squad-option input { flex: none; width: 16px; height: 16px; accent-color: var(--cyan); }
+.squad-member-role { display: grid; gap: 5px; margin: 0 10px 12px 36px; font-size: 12px; color: var(--muted); }
+.squad-member-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.squad-role-badge {
+  display: inline-flex; max-width: 100%; padding: 2px 7px; border: 1px solid rgba(85, 231, 255, 0.35);
+  border-radius: 3px; background: rgba(85, 231, 255, 0.07); color: var(--cyan);
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; overflow-wrap: anywhere;
+}
 
 @media (max-width: 700px) {
   .squad-layout { grid-template-columns: minmax(0, 1fr); }

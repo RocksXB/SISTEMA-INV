@@ -121,6 +121,11 @@ describe("aparicaoSquads Firestore Rules", () => {
     await assertSucceeds(setDoc(doc(admin, datedPath), { ...squad, createdAt: 1_800_000_000_000 }));
     await assertFails(updateDoc(doc(admin, datedPath), { createdAt: 1_800_000_000_001, revision: 2 }));
     await assertSucceeds(updateDoc(doc(admin, datedPath), { name: "Equipe renomeada", revision: 2 }));
+    await assertSucceeds(updateDoc(doc(admin, datedPath), { memberRoles: { [memberIds[0]]: "Comandante" }, revision: 3 }));
+    await assertFails(updateDoc(doc(player, datedPath), { memberRoles: { [memberIds[0]]: "Médico" }, revision: 4 }));
+    await assertFails(updateDoc(doc(admin, datedPath), { memberRoles: { outsider: "Comandante" }, revision: 4 }));
+    await assertFails(updateDoc(doc(admin, datedPath), { memberIds: [], revision: 4 }));
+    await assertSucceeds(updateDoc(doc(admin, datedPath), { memberIds: [], memberRoles: {}, revision: 4 }));
     await assertFails(deleteDoc(doc(player, path)));
     await assertSucceeds(deleteDoc(doc(admin, path)));
   });
