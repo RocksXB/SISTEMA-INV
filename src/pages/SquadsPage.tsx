@@ -6,7 +6,7 @@ import { CatalogOrder } from "../components/CatalogOrder";
 import { compareCatalogEntries, type CatalogSort } from "../utils/catalogSort";
 import { useAuth } from "../features/auth/AuthContext";
 import { loadNpcs, normalizeNpcText, type LoadedNpcs } from "../services/aparicoesService";
-import { deleteSquad, loadSquads, maxSquadName, saveSquad, type Squad } from "../services/squadService";
+import { deleteSquad, loadSquads, maxSquadName, maxSquadRole, saveSquad, type Squad, type SquadDetails } from "../services/squadService";
 import "./squads.css";
 
 const memberCount = (count: number) => `${count} ${count === 1 ? "integrante" : "integrantes"}`;
@@ -21,7 +21,7 @@ export default function SquadsPage() {
   const [catalogError, setCatalogError] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [order, setOrder] = useState<CatalogSort>("name");
-  const [editor, setEditor] = useState<{ name: string; memberIds: string[]; previous?: Squad }>();
+  const [editor, setEditor] = useState<SquadDetails & { previous?: Squad }>();
   const [removing, setRemoving] = useState<Squad>();
   const [query, setQuery] = useState("");
   const [onlyMembers, setOnlyMembers] = useState(false);
@@ -73,7 +73,8 @@ export default function SquadsPage() {
     setQuery("");
     setOnlyMembers(false);
     setSaveError("");
-    setEditor({ previous, name: previous?.name ?? "", memberIds: previous?.memberIds ?? [] });
+    setEditor({ previous, name: previous?.name ?? "", memberIds: previous?.memberIds ?? [],
+      memberRoles: previous?.memberRoles ?? {} });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -152,7 +153,10 @@ export default function SquadsPage() {
             {members.length > 0 && <ul>{members.map((character) => (
               <li key={character.id}>
                 <Link to={`/aparicoes?personagem=${encodeURIComponent(character.id)}`}>
-                  <span><b>{character.name}</b><small>{topics.get(character.topicId)}</small></span>
+                  <span><b className="squad-member-name">
+                    {selected.memberRoles?.[character.id] && <span className="squad-role-badge">{selected.memberRoles[character.id]}</span>}
+                    {character.name}
+                  </b><small>{topics.get(character.topicId)}</small></span>
                   <ChevronRight aria-hidden="true" />
                 </Link>
               </li>
@@ -192,6 +196,15 @@ export default function SquadsPage() {
                     }} />
                     <span><b>{character.name}</b><small>{topics.get(character.topicId)}</small></span>
                   </label>
+                  {chosen.has(character.id) && <label className="squad-member-role">
+                    Função no esquadrão
+                    <input type="text" maxLength={maxSquadRole} placeholder="Ex. Comandante"
+                      aria-label={`Função de ${character.name} no esquadrão`}
+                      value={editor.memberRoles?.[character.id] ?? ""}
+                      onChange={(event) => setEditor({ ...editor, memberRoles: {
+                        ...editor.memberRoles, [character.id]: event.target.value,
+                      } })} />
+                  </label>}
                 </li>
               ))}</ul>}
             </fieldset>
