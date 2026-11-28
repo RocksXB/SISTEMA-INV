@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CalendarDays, Cake, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Cake, ChevronLeft, ChevronRight, Flag, Pencil, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Empty, ErrorState, Panel } from "../components/Ui";
+import { Empty, ErrorState, Modal, Panel } from "../components/Ui";
+import { CampaignEventEditor } from "../features/calendar/CampaignEventEditor";
+import { deleteCampaignEvent, watchCampaignEvents, type CampaignEvent } from "../services/campaignEventsService";
 import { useAuth } from "../features/auth/AuthContext";
 import { useCampaignDate } from "../features/calendar/useCampaignDate";
 import {
@@ -24,6 +26,13 @@ export default function CampaignCalendarPage() {
   const [targetDate, setTargetDate] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [eventState, setEventState] = useState<{ month: string; events: CampaignEvent[]; error: string }>();
+  const [eventRetry, setEventRetry] = useState(0);
+  const [editingEvent, setEditingEvent] = useState<{ date: string; previous?: CampaignEvent }>();
+  const [removingEvent, setRemovingEvent] = useState<CampaignEvent>();
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const [eventNotice, setEventNotice] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -39,6 +48,15 @@ export default function CampaignCalendarPage() {
   const today = parseCampaignDate(date)!;
   const { year, month } = view || today;
   const monthKey = dateKey({ year, month, day: 1 }).slice(0, 7);
+  useEffect(() => {
+    if (!user) return;
+    return watchCampaignEvents(monthKey,
+      (events) => setEventState({ month: monthKey, events, error: "" }),
+      () => setEventState({ month: monthKey, events: [], error: "Não foi possível carregar os eventos deste mês." }));
+  }, [user, monthKey, eventRetry]);
+  const monthEvents = eventState?.month === monthKey ? eventState.events : [];
+  const eventsReady = eventState?.month === monthKey;
+  const eventsError = eventsReady ? eventState.error : "";
   const activeDay = selectedDay.startsWith(monthKey + "-") ? selectedDay : "";
   const topicNames = useMemo(() => new Map(catalog?.topics.map(({ id, title }) => [id, title])), [catalog]);
   const birthdays = useMemo(() => (catalog?.records || []).flatMap((npc) => {
@@ -54,6 +72,9 @@ export default function CampaignCalendarPage() {
     return counts;
   }, [birthdays]);
   const displayed = activeDay ? birthdays.filter((entry) => entry.date === activeDay) : birthdays;
+  const displayedEvents = activeDay ? monthEvents.filter((event) => event.date === activeDay) : monthEvents;
+  const eventCounts = new Map<string, number>();
+  for (const event of monthEvents) eventCounts.set(event.date, (eventCounts.get(event.date) || 0) + 1);
   const first = firstWeekday(year, month);
 
   function moveMonth(direction: -1 | 1) {
@@ -83,12 +104,27 @@ export default function CampaignCalendarPage() {
     void saveDate(targetDate ?? date);
   }
 
+  async function removeEvent() {
+    if (!removingEvent || removing) return;
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      await deleteCampaignEvent(removingEvent);
+      setRemovingEvent(undefined);
+      setEventNotice("Evento excluído.");
+    } catch (cause) {
+      setRemoveError(cause instanceof Error ? cause.message : "Não foi possível excluir o evento.");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   return (
     <main className="page campaign-calendar">
       <header className="page-heading campaign-heading">
         <div>
           <h1>Calendário</h1>
-          <p>Datas e aniversários da campanha</p>
+          <p>Datas, eventos e aniversários da campanha</p>
         </div>
         <div className="campaign-today">
           <CalendarDays aria-hidden="true" />
@@ -107,10 +143,15 @@ export default function CampaignCalendarPage() {
               value={targetDate ?? date} onChange={(event) => setTargetDate(event.target.value)} disabled={saving || !ready} />
             <button type="submit" className="secondary" disabled={saving || !ready}>Ir para data</button>
           </form>
+          <button type="button" className="secondary campaign-add-event"
+            onClick={() => setEditingEvent({ date: activeDay || (date.startsWith(monthKey + "-") ? date : monthKey + "-01") })}>
+            <Plus aria-hidden="true" /> Novo evento
+          </button>
           {saving && <span role="status">Atualizando data…</span>}
           {saveError && <ErrorState text={saveError} />}
         </Panel>
       )}
+      {eventNotice && <p className="form-success" role="status">{eventNotice}</p>}
       <div className="campaign-layout">
         <Panel className="campaign-month">
           <div className="campaign-month-heading">
@@ -126,35 +167,84 @@ export default function CampaignCalendarPage() {
               const day = index + 1;
               const key = dateKey({ year, month, day });
               const count = dayCounts.get(key) || 0;
+              const eventCount = eventCounts.get(key) || 0;
               const spoken = count === 1 ? ", 1 aniversário" : count ? `, ${count} aniversários` : "";
+              const eventSpoken = eventCount === 1 ? ", 1 evento" : eventCount ? `, ${eventCount} eventos` : "";
               return <li key={key}><button type="button" aria-current={key === date ? "date" : undefined}
-                aria-pressed={activeDay === key} aria-label={campaignDateLabel({ year, month, day }) + spoken}
+                aria-pressed={activeDay === key} aria-label={campaignDateLabel({ year, month, day }) + spoken + eventSpoken}
                 onClick={() => setSelectedDay((old) => old === key ? "" : key)}>
-                <span>{day}</span>{count > 0 && <small><Cake aria-hidden="true" /> {count}</small>}
+                <span>{day}</span><span className="campaign-day-markers">
+                  {count > 0 && <small><Cake aria-hidden="true" /> {count}</small>}
+                  {eventCount > 0 && <small className="campaign-event-count"><Flag aria-hidden="true" /> {eventCount}</small>}
+                </span>
               </button></li>;
             })}
           </ol>
         </Panel>
-        <Panel className="campaign-birthdays" title={activeDay
-          ? `Aniversários de ${parseCampaignDate(activeDay)?.day} de ${months[month - 1]}`
-          : "Aniversários do mês"}>
-          {activeDay && <button className="secondary campaign-clear-day" type="button"
-            onClick={() => setSelectedDay("")}>Ver mês inteiro</button>}
-          {catalogError && <ErrorState text={catalogError} />}
-          {catalog?.editsAvailable === false && <ErrorState text="Exibindo os aniversários das fichas originais." />}
-          {!catalog && !catalogError && <p role="status" className="campaign-load">Carregando aniversários…</p>}
-          {catalog && !displayed.length && <Empty text={activeDay ? "Nenhum aniversário neste dia." : "Nenhum aniversário neste mês."} />}
-          {displayed.length > 0 && <ul>{displayed.map(({ npc, date: birthday }) => (
-            <li key={npc.id}>
-              <Link to={`/aparicoes?personagem=${encodeURIComponent(npc.id)}`} aria-label={`Abrir ficha de ${npc.name}`}>
-                <time dateTime={birthday}>{birthday.slice(8)}</time>
-                <span><strong>{npc.name}</strong><small>{topicNames.get(npc.topicId)}</small></span>
-                <ChevronRight aria-hidden="true" />
-              </Link>
-            </li>
-          ))}</ul>}
-        </Panel>
+        <aside className="campaign-agenda">
+          <Panel className="campaign-events" title={activeDay
+            ? `Eventos de ${parseCampaignDate(activeDay)?.day} de ${months[month - 1]}` : "Eventos do mês"}>
+            {activeDay && <button type="button" className="secondary campaign-clear-day" onClick={() => setSelectedDay("")}>Ver mês inteiro</button>}
+            {!eventsReady && <p role="status" className="campaign-load">Carregando eventos…</p>}
+            {eventsError && <div className="campaign-load"><ErrorState text={eventsError} />
+              <button type="button" className="secondary" onClick={() => setEventRetry((value) => value + 1)}>Tentar de novo</button>
+            </div>}
+            {eventsReady && !eventsError && !displayedEvents.length && <Empty text={activeDay ? "Nenhum evento neste dia." : "Nenhum evento neste mês."} />}
+            {displayedEvents.length > 0 && <ul>{displayedEvents.map((event) => (
+              <li key={event.id}>
+                <header>
+                  <time dateTime={event.date}>{event.date.slice(8)}</time>
+                  <h3>{event.title}</h3>
+                  {profile?.role === "admin" && <div className="campaign-event-tools">
+                    <button type="button" className="icon-button" aria-label={`Editar evento ${event.title}`}
+                      onClick={() => setEditingEvent({ date: event.date, previous: event })}><Pencil /></button>
+                    <button type="button" className="icon-button" aria-label={`Excluir evento ${event.title}`}
+                      onClick={() => { setRemoveError(""); setRemovingEvent(event); }}><Trash2 /></button>
+                  </div>}
+                </header>
+                {event.description && <p>{event.description}</p>}
+              </li>
+            ))}</ul>}
+          </Panel>
+          <Panel className="campaign-birthdays" title={activeDay
+            ? `Aniversários de ${parseCampaignDate(activeDay)?.day} de ${months[month - 1]}`
+            : "Aniversários do mês"}>
+            {activeDay && <button className="secondary campaign-clear-day" type="button"
+              onClick={() => setSelectedDay("")}>Ver mês inteiro</button>}
+            {catalogError && <ErrorState text={catalogError} />}
+            {catalog?.editsAvailable === false && <ErrorState text="Exibindo os aniversários das fichas originais." />}
+            {!catalog && !catalogError && <p role="status" className="campaign-load">Carregando aniversários…</p>}
+            {catalog && !displayed.length && <Empty text={activeDay ? "Nenhum aniversário neste dia." : "Nenhum aniversário neste mês."} />}
+            {displayed.length > 0 && <ul>{displayed.map(({ npc, date: birthday }) => (
+              <li key={npc.id}>
+                <Link to={`/aparicoes?personagem=${encodeURIComponent(npc.id)}`} aria-label={`Abrir ficha de ${npc.name}`}>
+                  <time dateTime={birthday}>{birthday.slice(8)}</time>
+                  <span><strong>{npc.name}</strong><small>{topicNames.get(npc.topicId)}</small></span>
+                  <ChevronRight aria-hidden="true" />
+                </Link>
+              </li>
+            ))}</ul>}
+          </Panel>
+          </aside>
       </div>
+      {profile?.role === "admin" && editingEvent && <CampaignEventEditor
+        initialDate={editingEvent.date} previous={editingEvent.previous}
+        onClose={() => setEditingEvent(undefined)} onSaved={(event) => {
+          const next = parseCampaignDate(event.date)!;
+          setView({ year: next.year, month: next.month });
+          setSelectedDay(event.date);
+          setEditingEvent(undefined);
+          setEventNotice("Evento salvo.");
+        }} />}
+      {profile?.role === "admin" && removingEvent && <Modal title="Excluir evento"
+        onClose={() => { if (!removing) setRemovingEvent(undefined); }}>
+        <p>Excluir o evento <strong>{removingEvent.title}</strong> de {campaignDateLabel(parseCampaignDate(removingEvent.date)!)}?</p>
+        {removeError && <div role="alert"><ErrorState text={removeError} /></div>}
+        <div className="campaign-event-actions">
+          <button type="button" className="secondary" disabled={removing} onClick={() => setRemovingEvent(undefined)}>Cancelar</button>
+          <button type="button" className="danger" disabled={removing} onClick={() => void removeEvent()}>{removing ? "Excluindo…" : "Excluir evento"}</button>
+        </div>
+      </Modal>}
     </main>
   );
 }

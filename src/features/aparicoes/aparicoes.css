@@ -67,6 +67,17 @@
 .npc-results { min-width: 0; }
 .npc-mobile-topics { display: none; }
 .npc-notice { margin: 0 0 12px; color: #82f2bd; font-size: 13px; }
+.npc-card footer button svg { width: 13px; height: 13px; }
+.npc-notes-private { display: flex; gap: 8px; align-items: center; color: var(--cyan); font-size: 13px; }
+.npc-notes-private svg { width: 16px; height: 16px; }
+.npc-notes-modal h3 { overflow-wrap: anywhere; }
+.npc-notes-form, .npc-notes-form label { display: grid; gap: 12px; }
+.npc-notes-form label { color: var(--muted); font-size: 14px; gap: 7px; }
+.npc-notes-form textarea {
+  width: 100%; min-height: 220px; padding: 12px; resize: vertical;
+  border: 1px solid var(--border); background: #050e17; color: var(--text); font-size: 14px; line-height: 1.6;
+}
+.npc-notes-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .npc-filters { align-items: center; }
 .npc-filters > span { color: var(--muted); font-size: 12px; }
 .npc-grid {
@@ -215,10 +226,15 @@
 .npc-card footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 7px 8px;
   border-top: 1px solid var(--border);
 }
 .npc-card footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   background: transparent;
