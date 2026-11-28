@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, CircleMinus, Folder, FolderPlus, LayoutGrid, Search, Sparkles, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleMinus, Folder, FolderPlus, LayoutGrid, LockKeyhole, Search, Sparkles, UserPlus } from "lucide-react";
+import { NpcGmNotes } from "../features/aparicoes/NpcGmNotes";
 import { useSearchParams } from "react-router-dom";
 import { Empty, ErrorState, Loading, Modal, Panel } from "../components/Ui";
 import { CatalogOrder } from "../components/CatalogOrder";
@@ -34,7 +35,7 @@ function Facts({ fields, detail = false }: { fields: NpcField[]; detail?: boolea
   );
 }
 
-function NpcCard({ npc, topic, campaignDate, onEdit }: { npc: Npc; topic: string; campaignDate: string; onEdit?: () => void }) {
+function NpcCard({ npc, topic, campaignDate, onEdit, onNotes }: { npc: Npc; topic: string; campaignDate: string; onEdit?: () => void; onNotes?: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
   const status = npcCardStatus(npc.fields, topic);
   const date = parseCampaignDate(campaignDate);
@@ -76,7 +77,12 @@ function NpcCard({ npc, topic, campaignDate, onEdit }: { npc: Npc; topic: string
       </header>
       <Facts fields={summary} />
       {details.length > 0 && <details><summary>Mais informações</summary><Facts fields={details} detail /></details>}
-      {onEdit && <footer><button type="button" aria-label={`Editar ficha de ${npc.name}`} onClick={onEdit}>Editar ficha</button></footer>}
+      {(onEdit || onNotes) && <footer>
+        {onEdit && <button type="button" aria-label={`Editar ficha de ${npc.name}`} onClick={onEdit}>Editar ficha</button>}
+        {onNotes && <button type="button" aria-label={`Anotações do GM sobre ${npc.name}`} onClick={onNotes}>
+          <LockKeyhole aria-hidden="true" /> Notas do GM
+        </button>}
+      </footer>}
     </article>
   );
 }
@@ -129,6 +135,7 @@ export default function AparicoesPage() {
   const [page, setPage] = useState(0);
   const [order, setOrder] = useState<CatalogSort>("name");
   const [editing, setEditing] = useState<{ npc: Npc; creating: boolean }>();
+  const [notesNpc, setNotesNpc] = useState<Npc>();
   const [addingTopic, setAddingTopic] = useState(false);
   const [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
@@ -241,7 +248,8 @@ export default function AparicoesPage() {
             <div className="npc-grid">
               {matches.slice(current * pageSize, (current + 1) * pageSize).map(({ npc }) => (
                 <NpcCard key={`${npc.id}:${npc.image}`} npc={npc} topic={topics.get(npc.topicId) || ""} campaignDate={campaignDate}
-                  onEdit={canEdit ? () => setEditing({ npc, creating: false }) : undefined} />
+                  onEdit={canEdit ? () => setEditing({ npc, creating: false }) : undefined}
+                  onNotes={isAdmin ? () => setNotesNpc(npc) : undefined} />
               ))}
             </div>
           )}
@@ -255,6 +263,8 @@ export default function AparicoesPage() {
         </Panel>
         </div>
       )}
+      {notesNpc && isAdmin && <NpcGmNotes key={notesNpc.id} npc={notesNpc} onClose={() => setNotesNpc(undefined)}
+        onSaved={() => { setNotesNpc(undefined); setNotice("Anotação privada salva."); }} />}
       {addingTopic && canCreateTopic && catalog && (
         <NewTopic topics={catalog.topics} onClose={() => setAddingTopic(false)} onSave={(created) => {
           setCatalog((previous) => previous && ({ ...previous, topics: [...previous.topics, created] }));

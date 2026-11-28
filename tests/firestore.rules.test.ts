@@ -131,6 +131,42 @@ describe("aparicaoSquads Firestore Rules", () => {
   });
 });
 
+describe("notas do GM e eventos da campanha", () => {
+  it("protege o texto das notas contra leitura direta e listagem por jogadores", async () => {
+    const admin = environment.authenticatedContext("admin").firestore();
+    const player = environment.authenticatedContext("alice").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const path = "npcGmNotes/1518668803343388682";
+    await assertSucceeds(setDoc(doc(admin, path), { text: "Segredo do GM.", revision: 1 }));
+    await assertSucceeds(getDoc(doc(admin, path)));
+    await assertFails(getDoc(doc(player, path)));
+    await assertFails(getDoc(doc(anonymous, path)));
+    await assertFails(getDocs(collection(player, "npcGmNotes")));
+    await assertFails(updateDoc(doc(player, path), { text: "Texto do jogador.", revision: 2 }));
+    await assertFails(updateDoc(doc(admin, path), { text: "Revisão antiga.", revision: 1 }));
+    await assertSucceeds(updateDoc(doc(admin, path), { text: "Segredo revisado.", revision: 2 }));
+    await assertFails(setDoc(doc(admin, "npcGmNotes/invalid"), { text: "Texto.", revision: 1 }));
+  });
+  it("permite ao GM gerenciar eventos e aos jogadores consultar somente dados públicos", async () => {
+    const admin = environment.authenticatedContext("admin").firestore();
+    const player = environment.authenticatedContext("alice").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const path = "campaignEvents/mission";
+    const event = { title: "Festival", date: "2227-07-12", description: "Encontro na praça.", revision: 1 };
+    await assertFails(setDoc(doc(player, path), event));
+    await assertSucceeds(setDoc(doc(admin, path), event));
+    await assertSucceeds(getDocs(query(collection(player, "campaignEvents"),
+      where("date", ">=", "2227-07-01"), where("date", "<=", "2227-07-31"))));
+    await assertFails(getDoc(doc(anonymous, path)));
+    await assertFails(updateDoc(doc(player, path), { title: "Outro título.", revision: 2 }));
+    await assertFails(updateDoc(doc(admin, path), { date: "2227-13-12", revision: 2 }));
+    await assertFails(updateDoc(doc(admin, path), { title: "Revisão antiga.", revision: 1 }));
+    await assertSucceeds(updateDoc(doc(admin, path), { title: "Festival de inverno", date: "2227-08-01", revision: 2 }));
+    await assertFails(deleteDoc(doc(player, path)));
+    await assertSucceeds(deleteDoc(doc(admin, path)));
+  });
+});
+
 describe("campaignCalendar Firestore Rules", () => {
   it("mantém uma data compartilhada com leitura dos jogadores e edição apenas do GM", async () => {
     const admin = environment.authenticatedContext("admin").firestore();
